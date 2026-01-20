@@ -56,7 +56,7 @@ def benchmark_rust(image_bytes: bytes, num_iterations: int = 100):
 
 def benchmark_python(image_bytes: bytes, num_iterations: int = 100):
     """Benchmark Python implementation."""
-    import operators.refiners.image_technical_quality as tq_module
+    import mega_data_factory.operators.refiners.image_technical_quality as tq_module
 
     refiner = ImageTechnicalQualityRefiner()
 
