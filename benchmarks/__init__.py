@@ -1,1 +1,1 @@
-"""Benchmarks for webscale_multimodal_datapipeline."""
+"""Benchmarks for mega_data_factory."""

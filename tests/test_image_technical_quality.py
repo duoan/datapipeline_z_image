@@ -14,7 +14,7 @@ from PIL import Image
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from webscale_multimodal_datapipeline.operators.refiners.image_technical_quality import (
+from mega_data_factory.operators.refiners.image_technical_quality import (
     FIELD_COMPRESSION_ARTIFACTS,
     FIELD_INFORMATION_ENTROPY,
     RUST_BACKEND_AVAILABLE,

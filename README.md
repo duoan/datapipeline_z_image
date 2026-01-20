@@ -1,6 +1,6 @@
-# Webscale Multimodal Data Pipeline
+# Mega Data Factory
 
-A high-performance, distributed opensource web-scale (hundrends of billions) multimodal data processing pipelines built with Ray, featuring Rust-accelerated and GPU-optimized operators.
+A reproducible, high-throughput, distributed opensource web-scale (hundrends of billions) multimodal data processing pipeline runner for ablation + scoring + deduplication at web scale, built with Ray, featuring Rust-accelerated and GPU-optimized operators.
 
 This repository aims to replicate SOTA multimodal datapipelines, like
 
@@ -23,8 +23,8 @@ This repository aims to replicate SOTA multimodal datapipelines, like
 
 ```bash
 # Clone the repository
-git clone https://github.com/duoan/webscale-multimodal-datapipeline.git
-cd webscale-multimodal-datapipeline
+git clone https://github.com/duoan/mega-data-factory.git
+cd mega-data-factory
 
 # Install with Rust acceleration (recommended)
 uv pip install -e .
@@ -39,10 +39,10 @@ uv sync
 
 ```bash
 # Run pipeline with config
-wmd run --config configs/z_image.yaml
+mdf run --config configs/z_image.yaml
 
 # Or with options
-wmd run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
+mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 ```
 
 ## Operators
@@ -337,10 +337,10 @@ stage_1:
 ## Project Structure
 
 ```text
-webscale-multimodal-datapipeline/
-├── webscale_multimodal_datapipeline/   # Main package
+mega-data-factory/
+├── mega_data_factory/                  # Main package
 │   ├── __init__.py
-│   ├── cli.py                          # CLI entry point (wmd command)
+│   ├── cli.py                          # CLI entry point (mdf command)
 │   ├── rust_accelerated_ops.so         # Built Rust extension
 │   ├── framework/                      # Base classes and executor
 │   ├── operators/                      # Operators (refiners, filters, dedup)
@@ -361,7 +361,7 @@ webscale-multimodal-datapipeline/
 ## Extending the Pipeline
 
 ```python
-from webscale_multimodal_datapipeline import Refiner
+from mega_data_factory import Refiner
 
 class MyCustomRefiner(Refiner):
     def refine_batch(self, records: list[dict]) -> None:
@@ -387,11 +387,11 @@ MIT License
 ## Citation
 
 ```bibtex
-@software{webscale_multimodal_datapipeline,
+@software{mega_data_factory,
   author       = {Duo An},
-  title        = {Webscale Multimodal Data Pipeline},
+  title        = {Mega Data Factory},
   year         = {2025},
   publisher    = {GitHub},
-  url          = {https://github.com/duoan/webscale-multimodal-datapipeline}
+  url          = {https://github.com/duoan/mega-data-factory}
 }
 ```

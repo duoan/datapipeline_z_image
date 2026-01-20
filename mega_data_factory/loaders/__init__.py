@@ -5,7 +5,7 @@ This package contains all data loader implementations.
 Loaders are automatically registered when this package is imported.
 """
 
-from webscale_multimodal_datapipeline.framework import DataLoaderRegistry
+from mega_data_factory.framework import DataLoaderRegistry
 
 from .huggingface_loader import HuggingFaceDataLoader
 

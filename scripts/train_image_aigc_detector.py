@@ -39,7 +39,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, random_split
 
-from webscale_multimodal_datapipeline.models.image_aigc_detector import (
+from mega_data_factory.models.image_aigc_detector import (
     AIGCDataset,
     AIGCDetectorTrainer,
     SigLIP2Backbone,
@@ -47,12 +47,12 @@ from webscale_multimodal_datapipeline.models.image_aigc_detector import (
     collect_real_images_from_huggingface,
     get_auto_device,
 )
-from webscale_multimodal_datapipeline.models.image_aigc_detector.synthetic_data import (
+from mega_data_factory.models.image_aigc_detector.synthetic_data import (
     RECOMMENDED_AI_DATASETS,
     RECOMMENDED_REAL_DATASETS,
     extract_embeddings_batch,
 )
-from webscale_multimodal_datapipeline.models.image_aigc_detector.trainer import AIGCDetectorConfig
+from mega_data_factory.models.image_aigc_detector.trainer import AIGCDetectorConfig
 
 
 def cmd_extract_embeddings(args: argparse.Namespace) -> None:

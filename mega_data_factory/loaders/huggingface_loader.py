@@ -10,7 +10,7 @@ from typing import Any
 from datasets import Image as HFImage
 from datasets import load_dataset
 
-from webscale_multimodal_datapipeline.framework import DataLoader
+from mega_data_factory.framework import DataLoader
 
 
 class HuggingFaceDataLoader(DataLoader):

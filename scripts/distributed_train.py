@@ -8,7 +8,7 @@ import argparse
 
 import ray
 
-from webscale_multimodal_datapipeline.models.kmeans.distributed_trainer import DistributedKMeansTrainer
+from mega_data_factory.models.kmeans.distributed_trainer import DistributedKMeansTrainer
 
 
 def main():

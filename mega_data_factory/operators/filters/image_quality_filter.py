@@ -6,11 +6,11 @@ Filters records based on quality criteria.
 
 from typing import Any
 
-from webscale_multimodal_datapipeline.framework import Filter
+from mega_data_factory.framework import Filter
 
 # Import field name constants from refiners
-from webscale_multimodal_datapipeline.operators.refiners.image_metadata import FIELD_HEIGHT, FIELD_WIDTH
-from webscale_multimodal_datapipeline.operators.refiners.image_technical_quality import (
+from mega_data_factory.operators.refiners.image_metadata import FIELD_HEIGHT, FIELD_WIDTH
+from mega_data_factory.operators.refiners.image_technical_quality import (
     FIELD_COMPRESSION_ARTIFACTS,
     FIELD_INFORMATION_ENTROPY,
 )

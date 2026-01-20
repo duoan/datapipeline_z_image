@@ -1,9 +1,9 @@
 """
-Webscale Multimodal Data Pipeline CLI
+Mega Data Factory CLI
 
 Usage:
-    wmd run --config configs/z_image.yaml
-    wmd run -c configs/z_image.yaml --max-samples 1000
+    mdf run --config configs/z_image.yaml
+    mdf run -c configs/z_image.yaml --max-samples 1000
 """
 
 import argparse
@@ -11,12 +11,12 @@ import logging
 import sys
 
 # Import operators, loaders, and writers to register them
-from webscale_multimodal_datapipeline import (
+from mega_data_factory import (
     loaders,  # noqa: F401
     operators,  # noqa: F401
     writers,  # noqa: F401
 )
-from webscale_multimodal_datapipeline.framework import Executor, PipelineConfig
+from mega_data_factory.framework import Executor, PipelineConfig
 
 # Configure logging
 logging.basicConfig(
@@ -119,7 +119,9 @@ def _print_stats(operator_stats):
         if "_stage_summary" in stage_ops:
             summary = stage_ops["_stage_summary"]
             print("  [Stage Summary]")
-            print(f"    Input: {summary['input_records']} -> Output: {summary['output_records']} ({summary['pass_rate']:.1f}% pass)")
+            print(
+                f"    Input: {summary['input_records']} -> Output: {summary['output_records']} ({summary['pass_rate']:.1f}% pass)"
+            )
             print(f"    Total time: {summary['total_time']:.2f}s")
             print(f"    Throughput: {summary['throughput']:.2f} records/sec")
             print()
@@ -129,7 +131,9 @@ def _print_stats(operator_stats):
             if op_name == "_stage_summary":
                 continue
             print(f"  {op_name}:")
-            print(f"    Input: {op_stats.get('input_records', 0)} -> Output: {op_stats.get('output_records', 0)} ({op_stats.get('pass_rate', 0.0):.1f}% pass)")
+            print(
+                f"    Input: {op_stats.get('input_records', 0)} -> Output: {op_stats.get('output_records', 0)} ({op_stats.get('pass_rate', 0.0):.1f}% pass)"
+            )
             print(f"    Total time: {op_stats.get('total_time', 0.0):.2f}s")
             print(f"    Avg latency: {op_stats.get('avg_latency', 0.0) * 1000:.2f}ms")
             print(
@@ -149,8 +153,8 @@ def _print_stats(operator_stats):
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        prog="wmd",
-        description="Webscale Multimodal Data Pipeline - High-performance distributed data processing",
+        prog="mdf",
+        description="Mega Data Factory - High-performance distributed data processing",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -162,9 +166,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    wmd run --config configs/z_image.yaml
-    wmd run -c configs/z_image.yaml --max-samples 1000
-    wmd run -c configs/z_image.yaml --batch-size 500
+    mdf run --config configs/z_image.yaml
+    mdf run -c configs/z_image.yaml --max-samples 1000
+    mdf run -c configs/z_image.yaml --batch-size 500
         """,
     )
     run_parser.add_argument(

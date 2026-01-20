@@ -1,1 +1,1 @@
-"""Tests for webscale_multimodal_datapipeline."""
+"""Tests for mega_data_factory."""

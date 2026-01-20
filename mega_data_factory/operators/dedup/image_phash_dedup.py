@@ -11,14 +11,14 @@ from typing import Any
 import imagehash
 from PIL import Image
 
-from webscale_multimodal_datapipeline.framework import Deduplicator
+from mega_data_factory.framework import Deduplicator
 
 # Try to load Rust phash batch function (faster)
 RUST_PHASH_AVAILABLE = False
 _compute_phash_batch_rust = None
 
 try:
-    from webscale_multimodal_datapipeline import rust_accelerated_ops as _rust_module
+    from mega_data_factory import rust_accelerated_ops as _rust_module
 
     _compute_phash_batch_rust = getattr(_rust_module, "image_compute_phash_batch", None)
     if _compute_phash_batch_rust is not None:

@@ -1,4 +1,4 @@
-"""Webscale Multimodal Data Pipeline.
+"""Mega Data Factory.
 
 High-performance, distributed web-scale multimodal data processing pipeline
 with Ray, featuring Rust-accelerated and GPU-optimized operators.
@@ -6,7 +6,7 @@ with Ray, featuring Rust-accelerated and GPU-optimized operators.
 
 __version__ = "0.1.0"
 
-from webscale_multimodal_datapipeline.framework import (
+from mega_data_factory.framework import (
     Deduplicator,
     Executor,
     Filter,

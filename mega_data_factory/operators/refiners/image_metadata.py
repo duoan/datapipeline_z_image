@@ -11,7 +11,7 @@ from typing import Any
 import pyarrow as pa
 from PIL import Image
 
-from webscale_multimodal_datapipeline.framework import Refiner
+from mega_data_factory.framework import Refiner
 
 # Field name constants
 FIELD_WIDTH = "image_width"

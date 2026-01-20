@@ -18,7 +18,7 @@ from typing import Any
 
 import pyarrow as pa
 
-from webscale_multimodal_datapipeline.framework import Refiner
+from mega_data_factory.framework import Refiner
 
 # Field name constants (vd = visual degradations)
 FIELD_COLOR_CAST = "img_vd_color_cast"
@@ -85,7 +85,7 @@ class ImageVisualDegradationsRefiner(Refiner):
             return False
 
         try:
-            from webscale_multimodal_datapipeline.models.image_quality_assessment.inference import (
+            from mega_data_factory.models.image_quality_assessment.inference import (
                 MultiHeadQualityInference,
                 get_auto_device,
             )

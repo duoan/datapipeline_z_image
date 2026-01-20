@@ -7,7 +7,7 @@ The cluster IDs can then be used as bucket IDs for semantic deduplication.
 
 import numpy as np
 import argparse
-from webscale_multimodal_datapipeline.models.kmeans.trainer import KMeansTrainer
+from mega_data_factory.models.kmeans.trainer import KMeansTrainer
 
 
 def main():

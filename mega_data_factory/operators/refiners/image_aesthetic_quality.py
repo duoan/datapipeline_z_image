@@ -33,7 +33,7 @@ import torch
 import torch.nn as nn
 from huggingface_hub import hf_hub_download
 
-from webscale_multimodal_datapipeline.framework import Refiner
+from mega_data_factory.framework import Refiner
 
 # Field name constant
 FIELD_AESTHETIC_SCORE = "image_aesthetic_score"

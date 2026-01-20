@@ -25,7 +25,7 @@ import torch
 from PIL import Image
 from transformers import AutoModel, AutoProcessor
 
-from webscale_multimodal_datapipeline.framework import Refiner
+from mega_data_factory.framework import Refiner
 
 
 class ImageSigLIPEmbeddingRefiner(Refiner):

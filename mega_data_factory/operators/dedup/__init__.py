@@ -5,7 +5,7 @@ This package contains deduplication implementations.
 Dedups are automatically registered when this package is imported.
 """
 
-from webscale_multimodal_datapipeline.framework import OperatorRegistry
+from mega_data_factory.framework import OperatorRegistry
 
 from .image_phash_dedup import ImagePhashDeduplicator
 

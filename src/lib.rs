@@ -168,7 +168,7 @@ fn image_compute_phash_batch(
 }
 
 #[pymodule]
-fn rust_accelerated_ops(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn rust_operators(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(image_assess_quality_batch, m)?)?;
     m.add_function(wrap_pyfunction!(image_compute_phash_batch, m)?)?;
     Ok(())

@@ -15,7 +15,7 @@ from PIL import Image
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from webscale_multimodal_datapipeline.operators.refiners.image_technical_quality import (
+from mega_data_factory.operators.refiners.image_technical_quality import (
     RUST_BACKEND_AVAILABLE,
     ImageTechnicalQualityRefiner,
     _assess_quality_batch_rust,

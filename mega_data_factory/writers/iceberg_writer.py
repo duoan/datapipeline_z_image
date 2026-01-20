@@ -12,7 +12,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from webscale_multimodal_datapipeline.framework import DataWriter
+from mega_data_factory.framework import DataWriter
 
 try:
     from pyiceberg.catalog import load_catalog

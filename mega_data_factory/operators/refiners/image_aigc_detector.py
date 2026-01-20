@@ -34,8 +34,8 @@ import pyarrow as pa
 import torch
 from huggingface_hub import hf_hub_download
 
-from webscale_multimodal_datapipeline.framework import Refiner
-from webscale_multimodal_datapipeline.models.image_aigc_detector import AIGCClassifierHead
+from mega_data_factory.framework import Refiner
+from mega_data_factory.models.image_aigc_detector import AIGCClassifierHead
 
 # Field name constants
 FIELD_AIGC_SCORE = "image_aigc_score"

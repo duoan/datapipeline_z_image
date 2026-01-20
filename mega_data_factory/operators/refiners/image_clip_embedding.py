@@ -14,7 +14,7 @@ import pyarrow as pa
 import torch
 from PIL import Image
 
-from webscale_multimodal_datapipeline.framework import Refiner
+from mega_data_factory.framework import Refiner
 
 
 class ImageClipEmbeddingRefiner(Refiner):

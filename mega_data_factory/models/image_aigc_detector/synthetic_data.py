@@ -442,7 +442,7 @@ def load_ai_images_placeholder(
     print(f"  {output_dir / 'ai_generated/'}")
     print()
     print("Then load with:")
-    print("  from webscale_multimodal_datapipeline.models.image_aigc_detector import collect_real_images_from_directory")
+    print("  from mega_data_factory.models.image_aigc_detector import collect_real_images_from_directory")
     print(f"  ai_images, _ = collect_real_images_from_directory('{output_dir}/ai_generated')")
     print("=" * 60)
 

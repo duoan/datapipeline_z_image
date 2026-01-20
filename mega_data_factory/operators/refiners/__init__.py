@@ -6,7 +6,7 @@ Refiners enrich records by adding new information.
 Refiners are automatically registered when this package is imported.
 """
 
-from webscale_multimodal_datapipeline.framework import OperatorRegistry
+from mega_data_factory.framework import OperatorRegistry
 
 from .image_aesthetic_quality import ImageAestheticQualityRefiner
 from .image_aigc_detector import ImageAIGCDetectorRefiner

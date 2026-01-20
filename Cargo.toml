@@ -1,10 +1,10 @@
 [package]
-name = "webscale-multimodal-datapipeline"
+name = "mega-data-factory"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "rust_accelerated_ops"
+name = "mega_data_factory_rust_operators"
 crate-type = ["cdylib"]
 
 [dependencies]

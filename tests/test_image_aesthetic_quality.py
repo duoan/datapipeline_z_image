@@ -13,8 +13,8 @@ import time
 
 from PIL import Image
 
-from webscale_multimodal_datapipeline.operators.refiners.image_aesthetic_quality import ImageAestheticQualityRefiner
-from webscale_multimodal_datapipeline.operators.refiners.image_clip_embedding import ImageClipEmbeddingRefiner
+from mega_data_factory.operators.refiners.image_aesthetic_quality import ImageAestheticQualityRefiner
+from mega_data_factory.operators.refiners.image_clip_embedding import ImageClipEmbeddingRefiner
 
 
 def create_test_image(

@@ -1,16 +1,29 @@
 [project]
-name = "webscale-multimodal-datapipeline"
+name = "mega-data-factory"
 version = "0.1.0"
 description = "High-performance, distributed web-scale multimodal data processing pipeline with Ray, featuring Rust-accelerated and GPU-optimized operators"
 readme = "README.md"
 requires-python = ">=3.13"
 authors = [{ name = "Duo An", email = "duoan@example.com" }]
 keywords = [
+    "web-scale",
+    "mega-scale",
+    "data-factory",
+    "data-curation",
+    "data-engineering",
+    "multimodal-dataset",
+    "foundation-models",
+    "machine-learning",
+    "deep-learning",
+    "ai",
     "data-pipeline",
     "multimodal",
     "ray",
     "distributed",
+    "text-processing",
     "image-processing",
+    "video-processing",
+    "audio-processing",
     "clip",
     "siglip",
 ]
@@ -55,12 +68,12 @@ ml = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/duoan/webscale-multimodal-datapipeline"
-Repository = "https://github.com/duoan/webscale-multimodal-datapipeline"
-Documentation = "https://github.com/duoan/webscale-multimodal-datapipeline#readme"
+Homepage = "https://github.com/duoan/mega-data-factory"
+Repository = "https://github.com/duoan/mega-data-factory"
+Documentation = "https://github.com/duoan/mega-data-factory#readme"
 
 [project.scripts]
-wmd = "webscale_multimodal_datapipeline.cli:main"
+mdf = "mega_data_factory.cli:main"
 
 [build-system]
 requires = ["maturin>=1.7,<2.0"]
@@ -69,7 +82,7 @@ build-backend = "maturin"
 [tool.maturin]
 features = ["pyo3/extension-module"]
 python-source = "."
-module-name = "webscale_multimodal_datapipeline.rust_accelerated_ops"
+module-name = "mega_data_factory.rust_operators"
 
 [tool.ruff]
 line-length = 120
@@ -93,7 +106,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["webscale_multimodal_datapipeline"]
+known-first-party = ["mega_data_factory"]
 
 [tool.ruff.format]
 quote-style = "double"

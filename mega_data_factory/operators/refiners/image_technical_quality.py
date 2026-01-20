@@ -16,7 +16,7 @@ import numpy as np
 import pyarrow as pa
 from PIL import Image
 
-from webscale_multimodal_datapipeline.framework import Refiner
+from mega_data_factory.framework import Refiner
 
 # Field name constants
 FIELD_COMPRESSION_ARTIFACTS = "image_compression_artifacts"
@@ -29,7 +29,7 @@ RUST_BACKEND_AVAILABLE = False
 _assess_quality_batch_rust = None
 
 try:
-    from webscale_multimodal_datapipeline import rust_accelerated_ops as _rust_module
+    from mega_data_factory import rust_operators as _rust_module
 
     _assess_quality_batch_rust = getattr(_rust_module, "image_assess_quality_batch", None)
     if _assess_quality_batch_rust is not None:
