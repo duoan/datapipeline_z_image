@@ -8,12 +8,14 @@ instrumentation via context managers and Parquet output for Superset visualizati
 from .aggregator import MetricsAggregator
 from .collector import MetricsCollector
 from .models import OperatorMetrics, RunMetrics, StageMetrics
+from .reporter import MetricsReporter
 from .writer import MetricsWriter
 
 __all__ = [
     "MetricsCollector",
     "MetricsWriter",
     "MetricsAggregator",
+    "MetricsReporter",
     "RunMetrics",
     "StageMetrics",
     "OperatorMetrics",

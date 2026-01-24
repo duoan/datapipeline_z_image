@@ -81,6 +81,9 @@ class MetricsConfig:
     output_path: str = "./metrics"  # Base directory for metrics output
     collect_custom_metrics: bool = False  # Whether to collect custom metrics from operators
     write_on_completion: bool = True  # Whether to write metrics to Parquet on run completion
+    generate_report: bool = False  # Whether to generate HTML visualization report
+    huggingface_repo: str | None = None  # HuggingFace Space repo ID for publishing (e.g., "username/space-name")
+    huggingface_token: str | None = None  # HuggingFace API token (if None, uses HF_TOKEN env var)
 
 
 @dataclass

@@ -398,6 +398,10 @@ class Executor:
             self._write_metrics()
             print(f"Metrics written to: {self.metrics_writer.output_path}")
 
+            # Generate HTML report if enabled
+            if hasattr(self.config.executor.metrics, "generate_report") and self.config.executor.metrics.generate_report:
+                self._generate_metrics_report()
+
     def _collect_metrics_from_workers(self):
         """Collect operator metrics from all workers and aggregate to stage metrics."""
         if not self.metrics_aggregator or not self.metrics_collector:
@@ -432,6 +436,36 @@ class Executor:
             stage_metrics=stage_metrics,
             operator_metrics=operator_metrics,
         )
+
+    def _generate_metrics_report(self):
+        """Generate HTML metrics report and optionally publish to HuggingFace."""
+        if not self.metrics_writer:
+            return
+
+        from .metrics import MetricsReporter
+
+        print("\nGenerating metrics report...")
+        reporter = MetricsReporter(self.metrics_writer.output_path)
+
+        # Generate HTML report
+        report_path = str(self.metrics_writer.output_path / "metrics_report.html")
+        reporter.generate_html_report(output_path=report_path)
+        print(f"Report generated: {report_path}")
+
+        # Publish to HuggingFace if configured
+        metrics_config = self.config.executor.metrics
+        if hasattr(metrics_config, "huggingface_repo") and metrics_config.huggingface_repo:
+            try:
+                print(f"\nPublishing report to HuggingFace Space: {metrics_config.huggingface_repo}")
+                hf_token = getattr(metrics_config, "huggingface_token", None)
+                space_url = reporter.publish_to_huggingface(
+                    report_path=report_path,
+                    repo_id=metrics_config.huggingface_repo,
+                    token=hf_token,
+                )
+                print(f"✓ Report published: {space_url}")
+            except Exception as e:
+                print(f"Warning: Failed to publish to HuggingFace: {e}")
 
     def get_operator_stats(self) -> dict[str, dict[str, Any]]:
         """Collect performance statistics from all operators across all workers.
