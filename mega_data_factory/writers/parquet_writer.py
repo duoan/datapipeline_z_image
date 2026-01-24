@@ -6,7 +6,7 @@ Supports both local filesystem and cloud storage (S3, GCS, etc.).
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import fsspec
@@ -54,7 +54,7 @@ class ParquetDataWriter(DataWriter):
         arrow_table = pa.Table.from_pylist(data)
 
         # Generate unique filename with timestamp and UUID to avoid collisions
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         unique_id = uuid.uuid4().hex[:8]
         filename = f"part_{timestamp}_{unique_id}.parquet"
         parquet_path = f"{self.full_output_path}/{filename}"

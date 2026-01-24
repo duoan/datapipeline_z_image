@@ -19,12 +19,11 @@ Reference: Imagen 3 Paper - AIGC Content Detection for Data Filtering
 """
 
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as functional
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 
@@ -167,7 +166,7 @@ class FocalLoss(nn.Module):
         inputs = inputs.view(-1)
         targets = targets.view(-1)
 
-        bce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
+        bce_loss = functional.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
         pt = torch.exp(-bce_loss)  # p_t = p if y=1, else 1-p
         focal_loss = self.alpha * (1 - pt) ** self.gamma * bce_loss
 

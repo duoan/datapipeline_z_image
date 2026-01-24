@@ -5,14 +5,13 @@ Provides Executor for orchestrating the entire data processing pipeline.
 """
 
 from collections.abc import Iterator
-from datetime import datetime
 from typing import Any
 
 import ray
 
 from .backend import DedupBackend
 from .config import PipelineConfig
-from .metrics import MetricsAggregator, MetricsCollector, MetricsWriter, OperatorMetrics
+from .metrics import MetricsAggregator, MetricsCollector, MetricsWriter
 from .operator import Deduplicator
 from .registry import DataLoaderRegistry, DataWriterRegistry, OperatorRegistry
 from .worker import RayWorker
@@ -402,7 +401,7 @@ class Executor:
         if not self.metrics_aggregator or not self.metrics_collector:
             return
 
-        for stage_idx, (worker_group, stage_config) in enumerate(zip(self.stages, self.config.stages, strict=False)):
+        for worker_group, stage_config in zip(self.stages, self.config.stages, strict=False):
             stage_name = stage_config.name
 
             # Collect metrics from all workers in this stage

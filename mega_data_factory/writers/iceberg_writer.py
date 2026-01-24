@@ -16,10 +16,9 @@ from mega_data_factory.framework import DataWriter
 
 try:
     from pyiceberg.catalog import load_catalog
-    from pyiceberg.partitioning import PartitionSpec
     from pyiceberg.schema import Schema
     from pyiceberg.table import Table
-    from pyiceberg.types import FloatType, IntegerType, ListType, LongType, NestedField, StringType
+    from pyiceberg.types import FloatType, LongType, NestedField, StringType
 
     PYICEBERG_AVAILABLE = True
 except ImportError:

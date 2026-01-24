@@ -7,7 +7,7 @@ Provides clean, non-intrusive metrics collection via context managers.
 import time
 import uuid
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from .models import OperatorMetrics, RunMetrics, StageMetrics
@@ -42,7 +42,7 @@ class MetricsCollector:
     @staticmethod
     def _generate_run_id() -> str:
         """Generate unique run ID with timestamp."""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         short_uuid = str(uuid.uuid4())[:8]
         return f"run_{timestamp}_{short_uuid}"
 
@@ -63,13 +63,13 @@ class MetricsCollector:
                 pass
         """
         self._run_start_time = time.perf_counter()
-        start_datetime = datetime.now()
+        start_datetime = datetime.now(UTC)
 
         try:
             yield self
         finally:
             self._run_end_time = time.perf_counter()
-            end_datetime = datetime.now()
+            end_datetime = datetime.now(UTC)
             duration = self._run_end_time - self._run_start_time
 
             # Aggregate stage metrics
@@ -111,7 +111,7 @@ class MetricsCollector:
         """
         stage_key = f"{self.run_id}_{stage_name}"
         self._stage_start_times[stage_key] = time.perf_counter()
-        start_datetime = datetime.now()
+        start_datetime = datetime.now(UTC)
 
         # Snapshot operator metrics before stage
         operator_metrics_before = len(self._operator_metrics)
@@ -134,7 +134,7 @@ class MetricsCollector:
             yield stage_ctx
         finally:
             stage_end_time = time.perf_counter()
-            stage_duration = stage_end_time - self._stage_start_times[stage_key]
+            _ = stage_end_time - self._stage_start_times[stage_key]  # Duration calculated but not used directly
 
             # Get operator metrics collected during this stage
             operator_metrics_after = len(self._operator_metrics)
@@ -194,7 +194,7 @@ class MetricsCollector:
         """
         op_key = f"{self.run_id}_{stage_name}_{operator_name}_{worker_id}"
         self._operator_start_times[op_key] = time.perf_counter()
-        start_datetime = datetime.now()
+        start_datetime = datetime.now(UTC)
 
         class OperatorContext:
             """Context object for operator tracking."""

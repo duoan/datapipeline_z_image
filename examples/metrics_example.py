@@ -4,7 +4,7 @@ Example: Using metrics collection in pipeline
 Demonstrates how to use the metrics module for run/stage/operator level metrics.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from mega_data_factory.framework.metrics import (
     MetricsAggregator,
@@ -37,7 +37,7 @@ def example_basic_usage():
                 stage_name="stage_0",
                 operator_name="ImageMetadataRefiner",
                 worker_id="worker_0",
-                timestamp=datetime.now(),
+                timestamp=datetime.now(UTC),
                 input_records=1000,
                 output_records=1000,
                 pass_rate=100.0,
@@ -60,7 +60,7 @@ def example_basic_usage():
                 stage_name="stage_1",
                 operator_name="ImageClipEmbeddingRefiner",
                 worker_id="worker_0",
-                timestamp=datetime.now(),
+                timestamp=datetime.now(UTC),
                 input_records=1000,
                 output_records=1000,
                 pass_rate=100.0,
@@ -121,7 +121,7 @@ def example_write_to_parquet():
                 stage_name="basic_stage",
                 operator_name="ImageMetadataRefiner",
                 worker_id="worker_0",
-                timestamp=datetime.now(),
+                timestamp=datetime.now(UTC),
                 input_records=1000,
                 output_records=998,
                 pass_rate=99.8,
@@ -179,7 +179,7 @@ def example_aggregation():
             stage_name="embedding_stage",
             operator_name="ImageClipEmbeddingRefiner",
             worker_id="worker_0",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             input_records=500,
             output_records=500,
             pass_rate=100.0,
@@ -197,7 +197,7 @@ def example_aggregation():
             stage_name="embedding_stage",
             operator_name="ImageClipEmbeddingRefiner",
             worker_id="worker_1",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             input_records=500,
             output_records=500,
             pass_rate=100.0,

@@ -36,7 +36,7 @@ def test_python_implementation():
     refiner = ImageTechnicalQualityRefiner()
 
     # Force Python implementation by temporarily disabling Rust
-    import operators.refiners.image_technical_quality as tq_module
+    import mega_data_factory.operators.refiners.image_technical_quality as tq_module
 
     original_rust_available = tq_module.RUST_BACKEND_AVAILABLE
     tq_module.RUST_BACKEND_AVAILABLE = False

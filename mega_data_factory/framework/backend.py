@@ -171,7 +171,7 @@ class DedupBackend:
 
         # Collect results and reconstruct original order
         results = [False] * len(keys)
-        for bucket_id, (future, key_list) in futures.items():
+        for future, key_list in futures.values():
             bucket_results = ray.get(future)
             for (orig_idx, _), result in zip(key_list, bucket_results, strict=False):
                 results[orig_idx] = result
@@ -212,7 +212,7 @@ class DedupBackend:
 
         # Collect results and reconstruct original order
         results: list[tuple[bool, str | None]] = [(False, None)] * len(keys)
-        for bucket_id, (future, data_list) in futures.items():
+        for future, data_list in futures.values():
             bucket_results = ray.get(future)
             for (orig_idx, _, _), result in zip(data_list, bucket_results, strict=False):
                 results[orig_idx] = result

@@ -35,8 +35,10 @@ class DataWriter(ABC):
         Args:
             data: List of processed records to write
         """
-        pass
 
     def close(self):
-        """Close writer and flush any buffered data."""
+        """Close writer and flush any buffered data.
+
+        Default implementation does nothing. Override if needed.
+        """
         pass

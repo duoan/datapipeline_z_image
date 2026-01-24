@@ -18,7 +18,7 @@ RUST_PHASH_AVAILABLE = False
 _compute_phash_batch_rust = None
 
 try:
-    from mega_data_factory import rust_accelerated_ops as _rust_module
+    from mega_data_factory import rust_accelerated_ops as _rust_module  # type: ignore
 
     _compute_phash_batch_rust = getattr(_rust_module, "image_compute_phash_batch", None)
     if _compute_phash_batch_rust is not None:

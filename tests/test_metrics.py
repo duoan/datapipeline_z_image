@@ -5,8 +5,7 @@ Tests MetricsCollector, MetricsWriter, and MetricsAggregator.
 """
 
 import tempfile
-from datetime import datetime
-from pathlib import Path
+from datetime import UTC, datetime
 
 import pytest
 
@@ -57,7 +56,7 @@ class TestMetricsCollector:
             stage_name="test_stage",
             operator_name="TestOperator",
             worker_id="worker_0",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             input_records=100,
             output_records=90,
             pass_rate=90.0,
@@ -88,7 +87,7 @@ class TestMetricsCollector:
             stage_name="test_stage",
             operator_name="TestOperator",
             worker_id="worker_0",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             input_records=100,
             output_records=90,
             pass_rate=90.0,
@@ -132,7 +131,7 @@ class TestMetricsWriter:
                     stage_name="test_stage",
                     operator_name="TestOperator",
                     worker_id="worker_0",
-                    timestamp=datetime.now(),
+                    timestamp=datetime.now(UTC),
                     input_records=100,
                     output_records=90,
                     pass_rate=90.0,
@@ -181,7 +180,7 @@ class TestMetricsWriter:
                         stage_name="test_stage",
                         operator_name="TestOperator",
                         worker_id="worker_0",
-                        timestamp=datetime.now(),
+                        timestamp=datetime.now(UTC),
                         input_records=100,
                         output_records=90,
                         pass_rate=90.0,
@@ -221,7 +220,7 @@ class TestMetricsAggregator:
                 stage_name="test_stage",
                 operator_name="Op1",
                 worker_id="worker_0",
-                timestamp=datetime.now(),
+                timestamp=datetime.now(UTC),
                 input_records=100,
                 output_records=90,
                 pass_rate=90.0,
@@ -239,7 +238,7 @@ class TestMetricsAggregator:
                 stage_name="test_stage",
                 operator_name="Op2",
                 worker_id="worker_1",
-                timestamp=datetime.now(),
+                timestamp=datetime.now(UTC),
                 input_records=100,
                 output_records=80,
                 pass_rate=80.0,
@@ -283,7 +282,7 @@ class TestMetricsModels:
             stage_name="test_stage",
             operator_name="TestOperator",
             worker_id="worker_0",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             input_records=100,
             output_records=90,
             pass_rate=90.0,
@@ -308,7 +307,7 @@ class TestMetricsModels:
         metrics = StageMetrics(
             run_id="test_run",
             stage_name="test_stage",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             num_workers=2,
             input_records=200,
             output_records=180,

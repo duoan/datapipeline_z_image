@@ -4,7 +4,7 @@ Metrics aggregator for distributed collection
 Aggregates metrics from Ray workers across distributed environment.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import ray
@@ -55,7 +55,7 @@ class MetricsAggregator:
                         stage_name=stage_name,
                         operator_name=op_name,
                         worker_id=worker_id,
-                        timestamp=datetime.now(),
+                        timestamp=datetime.now(UTC),
                         input_records=op_stats.get("input_records", 0),
                         output_records=op_stats.get("output_records", 0),
                         pass_rate=op_stats.get("pass_rate", 0.0),
@@ -93,7 +93,7 @@ class MetricsAggregator:
             return StageMetrics(
                 run_id=self.run_id,
                 stage_name=stage_name,
-                timestamp=datetime.now(),
+                timestamp=datetime.now(UTC),
                 num_workers=0,
                 input_records=0,
                 output_records=0,
@@ -107,7 +107,7 @@ class MetricsAggregator:
             )
 
         # Aggregate metrics
-        num_workers = len(set(m.worker_id for m in operator_metrics))
+        num_workers = len({m.worker_id for m in operator_metrics})
         total_input = sum(m.input_records for m in operator_metrics)
         total_output = sum(m.output_records for m in operator_metrics)
         pass_rate = (100.0 * total_output / total_input) if total_input > 0 else 0.0
@@ -124,7 +124,7 @@ class MetricsAggregator:
         total_errors = sum(m.error_count for m in operator_metrics)
 
         # Use earliest timestamp
-        earliest_timestamp = min((m.timestamp for m in operator_metrics), default=datetime.now())
+        earliest_timestamp = min((m.timestamp for m in operator_metrics), default=datetime.now(UTC))
 
         return StageMetrics(
             run_id=self.run_id,

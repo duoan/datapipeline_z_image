@@ -5,8 +5,10 @@ Example script to train a KMeans model for clustering images.
 The cluster IDs can then be used as bucket IDs for semantic deduplication.
 """
 
-import numpy as np
 import argparse
+
+import numpy as np
+
 from mega_data_factory.models.kmeans.trainer import KMeansTrainer
 
 
@@ -21,9 +23,9 @@ def main():
                        help="Path to save trained model (default: ./models/kmeans/kmeans_model.pkl)")
     parser.add_argument("--random_state", type=int, default=42,
                        help="Random seed (default: 42)")
-    
+
     args = parser.parse_args()
-    
+
     # Load features
     print(f"Loading features from {args.features_path}...")
     if args.features_path.endswith('.npy'):
@@ -32,9 +34,9 @@ def main():
         import pickle
         with open(args.features_path, 'rb') as f:
             features = pickle.load(f)
-    
+
     print(f"Features shape: {features.shape}")
-    
+
     # Train model
     print(f"Training KMeans with {args.n_clusters} clusters...")
     trainer = KMeansTrainer(
@@ -42,7 +44,7 @@ def main():
         random_state=args.random_state
     )
     model = trainer.train(features)
-    
+
     # Save model
     trainer.save(args.output_path)
     print(f"Training completed. Model saved to {args.output_path}")
