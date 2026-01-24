@@ -240,7 +240,7 @@ def cmd_train(args: argparse.Namespace) -> None:
     print(f"  Loss: {'Focal Loss' if config.use_focal_loss else 'BCE'}")
     print("-" * 60)
 
-    history = trainer.train(
+    _ = trainer.train(  # Training history not used
         train_loader=train_loader,
         val_loader=val_loader,
         verbose=True,

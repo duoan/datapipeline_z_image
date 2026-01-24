@@ -26,7 +26,10 @@ class DataLoader(ABC):
 
 
 class DataWriter(ABC):
-    """Abstract base class for data writers."""
+    """Abstract base class for data writers.
+
+    Writers that need cleanup should implement a close() method.
+    """
 
     @abstractmethod
     def write(self, data: list[dict[str, Any]]):
@@ -35,10 +38,3 @@ class DataWriter(ABC):
         Args:
             data: List of processed records to write
         """
-
-    def close(self):
-        """Close writer and flush any buffered data.
-
-        Default implementation does nothing. Override if needed.
-        """
-        pass

@@ -234,9 +234,7 @@ class MetricsCollector:
             total_time = op_end_time - self._operator_start_times[op_key]
 
             # Calculate derived metrics
-            pass_rate = (
-                (100.0 * op_ctx.output_records / op_ctx.input_records) if op_ctx.input_records > 0 else 0.0
-            )
+            pass_rate = (100.0 * op_ctx.output_records / op_ctx.input_records) if op_ctx.input_records > 0 else 0.0
             throughput = op_ctx.input_records / total_time if total_time > 0 else 0.0
             avg_latency = total_time / op_ctx.input_records if op_ctx.input_records > 0 else 0.0
 

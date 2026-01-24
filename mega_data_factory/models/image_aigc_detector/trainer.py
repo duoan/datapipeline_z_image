@@ -261,9 +261,7 @@ class SigLIP2Backbone(nn.Module):
         try:
             from transformers import AutoModel, AutoProcessor
         except ImportError as err:
-            raise ImportError(
-                "transformers is required for SigLIP2. Install: pip install transformers"
-            ) from err
+            raise ImportError("transformers is required for SigLIP2. Install: pip install transformers") from err
 
         # Handle device selection
         if device == "auto":
@@ -663,6 +661,6 @@ class AIGCDetectorTrainer:
         is_hard |= (probs > threshold_low) & (probs < threshold_high)
 
         hard_indices = np.where(is_hard)[0]
-        print(f"Found {len(hard_indices)} hard samples ({100*len(hard_indices)/len(labels):.1f}%)")
+        print(f"Found {len(hard_indices)} hard samples ({100 * len(hard_indices) / len(labels):.1f}%)")
 
         return embeddings[hard_indices], labels[hard_indices]
