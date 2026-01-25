@@ -100,28 +100,34 @@ class ImageSigLIPEmbeddingRefiner(Refiner):
         else:
             self.feature_field_name = feature_field_name
 
-        # Load model and processor
+        # Load model and processor (visual tower only)
         print(f"Loading SigLIP2 model: {model_name} on {device}...")
         self.processor = AutoProcessor.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name).to(self.device)
+        model = AutoModel.from_pretrained(model_name)
+
+        # Extract visual tower only, discard text encoder to save memory
+        self.vision_model = model.vision_model.to(self.device)
 
         # Freeze model and set to eval mode
-        for param in self.model.parameters():
+        for param in self.vision_model.parameters():
             param.requires_grad = False
-        self.model.eval()
+        self.vision_model.eval()
 
         # Convert to FP16 if enabled
         if self.use_fp16:
-            self.model = self.model.half()
+            self.vision_model = self.vision_model.half()
             print("Using FP16 half precision")
 
         # Get embedding dimension from model config
-        self.embedding_dim = self.model.config.vision_config.hidden_size
+        self.embedding_dim = model.config.vision_config.hidden_size
+
+        # Delete full model to free memory (text tower, etc.)
+        del model
 
         # Thread pool initialized lazily (can't pickle ThreadPoolExecutor for Ray)
         self._executor = None
 
-        print(f"Model loaded. Embedding dim: {self.embedding_dim}")
+        print(f"Model loaded (visual tower only). Embedding dim: {self.embedding_dim}")
         print(f"Output field: {self.feature_field_name}")
 
     def _preprocess_image(self, record: dict[str, Any]) -> Image.Image | None:
@@ -181,7 +187,7 @@ class ImageSigLIPEmbeddingRefiner(Refiner):
 
                 with torch.inference_mode():
                     # Get vision model outputs
-                    outputs = self.model.vision_model(**{k: v for k, v in inputs.items() if k != "input_ids"})
+                    outputs = self.vision_model(**{k: v for k, v in inputs.items() if k != "input_ids"})
 
                     # Use pooler output (CLS token) if available, else mean pooling
                     if hasattr(outputs, "pooler_output") and outputs.pooler_output is not None:

@@ -81,24 +81,29 @@ class ImageClipEmbeddingRefiner(Refiner):
         else:
             self.feature_field_name = feature_field_name
 
-        # Load model
+        # Load model (visual tower only)
         print(f"Loading OpenCLIP model: {model_name}/{pretrained} on {device}...")
-        self.model, _, self.preprocess = open_clip.create_model_and_transforms(
+        model, _, self.preprocess = open_clip.create_model_and_transforms(
             model_name, pretrained=pretrained, device=self.device
         )
-        self.model.eval()
+
+        # Extract visual tower only, discard text encoder to save memory
+        self.visual = model.visual
+        self.visual.eval()
+        self.embedding_dim = self.visual.output_dim
 
         # Convert to FP16 if enabled
         if self.use_fp16:
-            self.model = self.model.half()
+            self.visual = self.visual.half()
             print("Using FP16 half precision")
 
-        self.tokenizer = open_clip.get_tokenizer(model_name)
+        # Delete full model to free memory (text tower, etc.)
+        del model
 
         # Thread pool initialized lazily (can't pickle ThreadPoolExecutor for Ray)
         self._executor = None
 
-        print(f"Model loaded. Embedding dim: {self.model.visual.output_dim}")
+        print(f"Model loaded (visual tower only). Embedding dim: {self.embedding_dim}")
         print(f"Output field: {self.feature_field_name}")
 
     def _preprocess_image(self, record: dict[str, Any]) -> tuple[int, Any] | None:
@@ -119,8 +124,7 @@ class ImageClipEmbeddingRefiner(Refiner):
         if not records:
             return
 
-        embedding_dim = self.model.visual.output_dim
-        zero_embedding = [0.0] * embedding_dim
+        zero_embedding = [0.0] * self.embedding_dim
 
         # Initialize all records with zero embeddings first
         for record in records:
@@ -153,7 +157,7 @@ class ImageClipEmbeddingRefiner(Refiner):
             try:
                 batch_tensor = torch.stack(tensors).to(self.device, dtype=self.dtype)
                 with torch.inference_mode():
-                    features = self.model.encode_image(batch_tensor)
+                    features = self.visual(batch_tensor)
                     if self.normalize:
                         features = features / features.norm(dim=-1, keepdim=True)
                     # Convert all at once (faster than per-row tolist)
