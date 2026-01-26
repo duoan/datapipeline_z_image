@@ -96,8 +96,8 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 
 | Operator | Description | Reference |
 |----------|-------------|-----------|
-| [`URLFilter`](docs/operators/url_filter.md) | Domain blocklist, URL word scoring, quality source exclusion | RefinedWeb §G.1 |
-| [`TextLengthFilter`](docs/operators/text_length_filter.md) | Filter by character/word count | FineWeb, RefinedWeb |
+| [`URLFilter`](mega_data_factory/operators/filters/url_filter.md) | Domain blocklist, URL word scoring, quality source exclusion | RefinedWeb §G.1 |
+| [`TextLengthFilter`](mega_data_factory/operators/filters/text_length_filter.md) | Filter by character/word count | FineWeb, RefinedWeb |
 
 **Coming Soon:**
 - `LanguageFilter` - fastText language detection
@@ -113,25 +113,25 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 
 | Operator | Description | Acceleration |
 |----------|-------------|--------------|
-| [`ImageMetadataRefiner`](docs/operators/image_metadata_refiner.md) | Width, height, format, file size | CPU |
-| [`ImageTechnicalQualityRefiner`](docs/operators/image_technical_quality_refiner.md) | Compression artifacts, entropy | 🦀 Rust |
-| [`ImageVisualDegradationsRefiner`](docs/operators/image_visual_degradations_refiner.md) | Color cast, blur, watermark, noise | CPU |
-| [`ImageClipEmbeddingRefiner`](docs/operators/image_clip_embedding_refiner.md) | CLIP embeddings (OpenCLIP) | 🖥️ GPU |
-| [`ImageSigLIPEmbeddingRefiner`](docs/operators/image_siglip_embedding_refiner.md) | SigLIP2 embeddings | 🖥️ GPU |
-| [`ImageAestheticQualityRefiner`](docs/operators/image_aesthetic_quality_refiner.md) | Aesthetic score (CLIP-based) | CPU |
-| [`ImageAIGCDetectorRefiner`](docs/operators/image_aigc_detector_refiner.md) | AI-generated image detection | CPU |
+| [`ImageMetadataRefiner`](mega_data_factory/operators/refiners/image_metadata.md) | Width, height, format, file size | CPU |
+| [`ImageTechnicalQualityRefiner`](mega_data_factory/operators/refiners/image_technical_quality.md) | Compression artifacts, entropy | 🦀 Rust |
+| [`ImageVisualDegradationsRefiner`](mega_data_factory/operators/refiners/image_visual_degradations.md) | Color cast, blur, watermark, noise | CPU |
+| [`ImageClipEmbeddingRefiner`](mega_data_factory/operators/refiners/image_clip_embedding.md) | CLIP embeddings (OpenCLIP) | 🖥️ GPU |
+| [`ImageSigLIPEmbeddingRefiner`](mega_data_factory/operators/refiners/image_siglip_embedding.md) | SigLIP2 embeddings | 🖥️ GPU |
+| [`ImageAestheticQualityRefiner`](mega_data_factory/operators/refiners/image_aesthetic_quality.md) | Aesthetic score (CLIP-based) | CPU |
+| [`ImageAIGCDetectorRefiner`](mega_data_factory/operators/refiners/image_aigc_detector.md) | AI-generated image detection | CPU |
 
 **Filters:**
 
 | Operator | Description |
 |----------|-------------|
-| [`ImageQualityFilter`](docs/operators/image_quality_filter.md) | Filter by size, quality metrics, aesthetic score |
+| [`ImageQualityFilter`](mega_data_factory/operators/filters/image_quality_filter.md) | Filter by size, quality metrics, aesthetic score |
 
 **Deduplicators:**
 
 | Operator | Description | Acceleration |
 |----------|-------------|--------------|
-| [`ImagePhashDeduplicator`](docs/operators/image_phash_deduplicator.md) | Perceptual hash deduplication | 🦀 Rust |
+| [`ImagePhashDeduplicator`](mega_data_factory/operators/dedup/image_phash_dedup.md) | Perceptual hash deduplication | 🦀 Rust |
 
 ### Data Writers
 
