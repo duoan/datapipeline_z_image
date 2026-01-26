@@ -96,8 +96,8 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 
 | Operator | Description | Reference |
 |----------|-------------|-----------|
-| `URLFilter` | Domain blocklist, URL word scoring, quality source exclusion | RefinedWeb §G.1 |
-| `TextLengthFilter` | Filter by character/word count | FineWeb, RefinedWeb |
+| [`URLFilter`](docs/operators/url_filter.md) | Domain blocklist, URL word scoring, quality source exclusion | RefinedWeb §G.1 |
+| [`TextLengthFilter`](docs/operators/text_length_filter.md) | Filter by character/word count | FineWeb, RefinedWeb |
 
 **Coming Soon:**
 - `LanguageFilter` - fastText language detection
@@ -113,25 +113,25 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 
 | Operator | Description | Acceleration |
 |----------|-------------|--------------|
-| `ImageMetadataRefiner` | Width, height, format, file size | CPU |
-| `ImageTechnicalQualityRefiner` | Compression artifacts, entropy | 🦀 Rust |
-| `ImageVisualDegradationsRefiner` | Color cast, blur, watermark, noise | CPU |
-| `ImageClipEmbeddingRefiner` | CLIP embeddings (OpenCLIP) | 🖥️ GPU |
-| `ImageSigLIPEmbeddingRefiner` | SigLIP2 embeddings | 🖥️ GPU |
-| `ImageAestheticQualityRefiner` | Aesthetic score (CLIP-based) | CPU |
-| `ImageAIGCDetectorRefiner` | AI-generated image detection | CPU |
+| [`ImageMetadataRefiner`](docs/operators/image_metadata_refiner.md) | Width, height, format, file size | CPU |
+| [`ImageTechnicalQualityRefiner`](docs/operators/image_technical_quality_refiner.md) | Compression artifacts, entropy | 🦀 Rust |
+| [`ImageVisualDegradationsRefiner`](docs/operators/image_visual_degradations_refiner.md) | Color cast, blur, watermark, noise | CPU |
+| [`ImageClipEmbeddingRefiner`](docs/operators/image_clip_embedding_refiner.md) | CLIP embeddings (OpenCLIP) | 🖥️ GPU |
+| [`ImageSigLIPEmbeddingRefiner`](docs/operators/image_siglip_embedding_refiner.md) | SigLIP2 embeddings | 🖥️ GPU |
+| [`ImageAestheticQualityRefiner`](docs/operators/image_aesthetic_quality_refiner.md) | Aesthetic score (CLIP-based) | CPU |
+| [`ImageAIGCDetectorRefiner`](docs/operators/image_aigc_detector_refiner.md) | AI-generated image detection | CPU |
 
 **Filters:**
 
 | Operator | Description |
 |----------|-------------|
-| `ImageQualityFilter` | Filter by size, quality metrics, aesthetic score |
+| [`ImageQualityFilter`](docs/operators/image_quality_filter.md) | Filter by size, quality metrics, aesthetic score |
 
 **Deduplicators:**
 
 | Operator | Description | Acceleration |
 |----------|-------------|--------------|
-| `ImagePhashDeduplicator` | Perceptual hash deduplication | 🦀 Rust |
+| [`ImagePhashDeduplicator`](docs/operators/image_phash_deduplicator.md) | Perceptual hash deduplication | 🦀 Rust |
 
 ### Data Writers
 
