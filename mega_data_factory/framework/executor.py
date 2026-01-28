@@ -116,9 +116,12 @@ class Executor:
                     **config.data_writer.params,
                     "output_path": rejected_output_path,
                     "table_name": config.data_writer.params.get("table_name", "default") + "_rejected",
+                    # Partition rejected samples by operator name for efficient reading
+                    "partition_by": "operator",
+                    "partition_key_extractor": "_rejection_details.operator",
                 },
             }
-            print(f"Rejected samples collection enabled. Output: {rejected_output_path}")
+            print(f"Rejected samples collection enabled. Output: {rejected_output_path} (partitioned by operator)")
 
         # Distributed loading is always enabled for mega-scale processing
         print(
@@ -689,8 +692,24 @@ class Executor:
         # Get run_id
         run_id = self.metrics_collector.run_id
 
+        # Get rejected samples path if enabled
+        rejected_samples_path = None
+        if self.collect_rejected and self.rejected_writer_config:
+            rejected_samples_path = self.rejected_writer_config["params"].get("output_path")
+
+        # Get output samples path from writer config
+        output_samples_path = self.writer_config.params.get("output_path")
+
+        # Get debug_samples_per_operator from config
+        debug_samples_per_operator = self.config.executor.metrics.debug_samples_per_operator
+
         # Generate HTML report for this run
-        report_path = reporter.generate_single_run_report(run_id=run_id)
+        report_path = reporter.generate_single_run_report(
+            run_id=run_id,
+            rejected_samples_path=rejected_samples_path,
+            output_samples_path=output_samples_path,
+            debug_samples_per_operator=debug_samples_per_operator,
+        )
         print(f"✓ Report generated: {report_path}")
 
         # Publish to HuggingFace if configured

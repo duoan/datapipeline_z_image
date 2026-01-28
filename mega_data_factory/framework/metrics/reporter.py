@@ -127,12 +127,18 @@ class MetricsReporter:
         self,
         run_id: str | None = None,
         output_path: str | None = None,
+        rejected_samples_path: str | None = None,
+        output_samples_path: str | None = None,
+        debug_samples_per_operator: int = 20,
     ) -> str:
         """Generate comprehensive single-run HTML report.
 
         Args:
             run_id: Run ID to analyze (if None, uses latest run)
             output_path: Output path for HTML report (if None, auto-generated)
+            rejected_samples_path: Path to rejected samples Parquet files (for debug section)
+            output_samples_path: Path to output samples Parquet files (for output preview)
+            debug_samples_per_operator: Number of rejected samples to show per operator
 
         Returns:
             Path to generated report
@@ -149,8 +155,22 @@ class MetricsReporter:
         if run_series is None:
             raise ValueError(f"Run {run_id} not found")
 
+        # Load rejected samples if path provided
+        rejected_samples_by_operator: dict[str, list[dict[str, Any]]] = {}
+        if rejected_samples_path:
+            rejected_samples_by_operator = self._load_rejected_samples(
+                rejected_samples_path, debug_samples_per_operator
+            )
+
+        # Load output samples if path provided
+        output_samples: list[str] = []
+        if output_samples_path:
+            output_samples = self._load_output_samples(output_samples_path, debug_samples_per_operator)
+
         # Generate HTML
-        html = self._generate_single_run_html(run_id, run_series, stage_df, operator_df)
+        html = self._generate_single_run_html(
+            run_id, run_series, stage_df, operator_df, rejected_samples_by_operator, output_samples
+        )
 
         # Determine output path
         if output_path is None:
@@ -163,12 +183,181 @@ class MetricsReporter:
 
         return str(output_path)
 
+    def _load_output_samples(self, output_samples_path: str, max_samples: int) -> list[str]:
+        """Load output samples from Parquet files for preview.
+
+        Args:
+            output_samples_path: Path to output samples directory
+            max_samples: Maximum number of samples to load
+
+        Returns:
+            List of JSON strings representing output samples
+        """
+        import json
+
+        output_path = Path(output_samples_path)
+        if not output_path.exists():
+            print(f"Warning: Output samples path does not exist: {output_samples_path}")
+            return []
+
+        # Find all Parquet files in the output directory
+        parquet_files = list(output_path.glob("**/*.parquet"))
+        if not parquet_files:
+            print(f"Warning: No Parquet files found in: {output_samples_path}")
+            return []
+
+        # Load samples from the first file(s) until we have enough
+        samples = []
+        try:
+            for parquet_file in parquet_files:
+                if len(samples) >= max_samples:
+                    break
+                df = pd.read_parquet(parquet_file)
+                for _, row in df.iterrows():
+                    if len(samples) >= max_samples:
+                        break
+                    # Convert row to dict and then to JSON
+                    sample_dict = {}
+                    for key, value in row.to_dict().items():
+                        if key.startswith("_"):
+                            continue  # Skip internal fields
+                        if isinstance(value, bytes):
+                            sample_dict[key] = f"<binary: {len(value)} bytes>"
+                        elif isinstance(value, str) and len(value) > 500:
+                            sample_dict[key] = value[:500] + "..."
+                        else:
+                            sample_dict[key] = value
+                    try:
+                        json_str = json.dumps(sample_dict, indent=2, ensure_ascii=False, default=str)
+                    except Exception:
+                        json_str = str(sample_dict)
+                    samples.append(json_str)
+        except Exception as e:
+            print(f"Warning: Failed to load output samples: {e}")
+            return []
+
+        return samples
+
+    def _load_rejected_samples(
+        self, rejected_samples_path: str, max_per_operator: int
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Load rejected samples from Parquet files and group by operator.
+
+        Supports both partitioned (operator=xxx/) and non-partitioned directory structures.
+        For partitioned data, reads only from specific operator partitions for efficiency.
+
+        Args:
+            rejected_samples_path: Path to rejected samples directory
+            max_per_operator: Maximum number of samples to load per operator
+
+        Returns:
+            Dictionary mapping operator name to list of rejected samples
+        """
+        import json
+
+        rejected_path = Path(rejected_samples_path)
+        if not rejected_path.exists():
+            print(f"Warning: Rejected samples path does not exist: {rejected_samples_path}")
+            return {}
+
+        result: dict[str, list[dict[str, Any]]] = {}
+
+        # Check if data is partitioned (look for operator=xxx directories)
+        partition_dirs = list(rejected_path.glob("*/operator=*"))
+        if partition_dirs:
+            # Partitioned data: read from each operator partition separately
+            print("Loading rejected samples from partitioned directories...")
+            for partition_dir in partition_dirs:
+                # Extract operator name from partition directory name (operator=xxx)
+                dir_name = partition_dir.name
+                if dir_name.startswith("operator="):
+                    operator_name = dir_name[len("operator=") :]
+                else:
+                    continue
+
+                # Find Parquet files in this partition
+                parquet_files = list(partition_dir.glob("*.parquet"))
+                if not parquet_files:
+                    continue
+
+                # Load samples from this partition (up to max_per_operator)
+                samples = []
+                try:
+                    for parquet_file in parquet_files:
+                        if len(samples) >= max_per_operator:
+                            break
+                        df = pd.read_parquet(parquet_file)
+                        for _, row in df.iterrows():
+                            if len(samples) >= max_per_operator:
+                                break
+                            samples.append(row.to_dict())
+                except Exception as e:
+                    print(f"Warning: Failed to load samples from {partition_dir}: {e}")
+                    continue
+
+                if samples:
+                    result[operator_name] = samples
+                    print(f"  Loaded {len(samples)} samples from operator={operator_name}")
+        else:
+            # Non-partitioned data: load all and group by operator
+            # Find all Parquet files in the rejected samples directory
+            parquet_files = list(rejected_path.glob("**/*.parquet"))
+            if not parquet_files:
+                print(f"Warning: No Parquet files found in: {rejected_samples_path}")
+                return {}
+
+            # Load and concatenate all Parquet files
+            try:
+                dfs = [pd.read_parquet(f) for f in parquet_files]
+                if not dfs:
+                    return {}
+                rejected_df = pd.concat(dfs, ignore_index=True)
+            except Exception as e:
+                print(f"Warning: Failed to load rejected samples: {e}")
+                return {}
+
+            if len(rejected_df) == 0:
+                return {}
+
+            # Check if _rejection_details column exists
+            if "_rejection_details" not in rejected_df.columns:
+                print("Warning: _rejection_details column not found in rejected samples")
+                return {}
+
+            # Group by operator name from _rejection_details
+            for _, row in rejected_df.iterrows():
+                rejection_details = row.get("_rejection_details")
+                if rejection_details is None:
+                    continue
+
+                # Parse rejection_details if it's a string (JSON)
+                if isinstance(rejection_details, str):
+                    try:
+                        rejection_details = json.loads(rejection_details)
+                    except json.JSONDecodeError:
+                        continue
+
+                operator_name = rejection_details.get("operator", "Unknown")
+
+                if operator_name not in result:
+                    result[operator_name] = []
+
+                # Only collect up to max_per_operator samples per operator
+                if len(result[operator_name]) < max_per_operator:
+                    # Convert row to dict, excluding internal columns for cleaner display
+                    sample = row.to_dict()
+                    result[operator_name].append(sample)
+
+        return result
+
     def _generate_single_run_html(
         self,
         run_id: str,
         run_series: pd.Series,
         stage_df: pd.DataFrame | None,
         operator_df: pd.DataFrame | None,
+        rejected_samples_by_operator: dict[str, list[dict[str, Any]]] | None = None,
+        output_samples: list[str] | None = None,
     ) -> str:
         """Generate HTML for single run analysis using Jinja2 template."""
         try:
@@ -246,18 +435,7 @@ class MetricsReporter:
                 }
             )
 
-        # 7. Throughput vs Latency Scatter
-        if operator_df is not None and len(operator_df) > 0:
-            charts.append(
-                {
-                    "title": "💡 Throughput vs Latency Analysis",
-                    "description": "Performance scatter plot with bubble size representing workload",
-                    "html": self._generate_throughput_latency_scatter(operator_df),
-                    "alert": None,
-                }
-            )
-
-        # 8. Stage Duration Waterfall
+        # 7. Stage Duration Waterfall
         if stage_df is not None and len(stage_df) > 0:
             charts.append(
                 {
@@ -271,6 +449,9 @@ class MetricsReporter:
         # 9. Detailed Metrics Tables
         tables = self._generate_detailed_tables(stage_df, operator_df)
 
+        # 10. Debug Section - Rejected Samples by Operator
+        debug_sections = self._generate_debug_sections(rejected_samples_by_operator)
+
         # Render template
         template = self.jinja_env.get_template("report.html.jinja2")
         return template.render(
@@ -279,7 +460,178 @@ class MetricsReporter:
             run_metrics=run_series,
             charts=charts,
             tables=tables,
+            debug_sections=debug_sections,
+            output_samples=output_samples or [],
         )
+
+    def _generate_debug_sections(
+        self,
+        rejected_samples_by_operator: dict[str, list[dict[str, Any]]] | None,
+        max_groups: int = 10,
+        max_samples_per_group: int = 5,
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Generate debug sections with rejected samples grouped by operator and type.
+
+        For dedup operators, samples are grouped by dedup_key to show which
+        samples share the same content hash. If representative_id is available,
+        it's included to show which sample was the "first seen" original.
+
+        Args:
+            rejected_samples_by_operator: Dictionary mapping operator name to list of rejected samples
+            max_groups: Maximum number of duplicate groups to show (default: 10)
+            max_samples_per_group: Maximum samples to show per group (default: 5)
+
+        Returns:
+            Dictionary with 'dedup' and 'filter' keys, each containing list of operator sections
+        """
+        import json
+
+        if not rejected_samples_by_operator:
+            return {"dedup": [], "filter": []}
+
+        dedup_sections = []
+        filter_sections = []
+
+        for operator_name, samples in rejected_samples_by_operator.items():
+            if not samples:
+                continue
+
+            # Determine if this is a dedup or filter operator based on rejection reason
+            first_sample = samples[0]
+            rejection_details = first_sample.get("_rejection_details", {})
+            if isinstance(rejection_details, str):
+                try:
+                    rejection_details = json.loads(rejection_details)
+                except json.JSONDecodeError:
+                    rejection_details = {}
+
+            rejection_reason = rejection_details.get("reason", "unknown")
+            is_dedup = rejection_reason == "duplicate"
+
+            if is_dedup:
+                # Group dedup samples by dedup_key (content hash)
+                # This groups all samples that have the same content together
+                groups: dict[str, list[dict[str, Any]]] = {}
+                for sample in samples:
+                    sample_rejection_details = sample.get("_rejection_details", {})
+                    if isinstance(sample_rejection_details, str):
+                        try:
+                            sample_rejection_details = json.loads(sample_rejection_details)
+                        except json.JSONDecodeError:
+                            sample_rejection_details = {}
+
+                    # Group by dedup_key (content hash) instead of representative_id
+                    dedup_key = sample_rejection_details.get("dedup_key", "")
+                    if not dedup_key:
+                        continue
+
+                    if dedup_key not in groups:
+                        groups[dedup_key] = []
+                    groups[dedup_key].append(sample)
+
+                # Skip if no duplicates found
+                if not groups:
+                    continue
+
+                # Calculate total duplicates count
+                total_duplicates = sum(len(g) for g in groups.values())
+                total_groups = len(groups)
+
+                # Sample up to max_groups groups
+                sampled_group_ids = list(groups.keys())[:max_groups]
+
+                # Create grouped display for sampled groups
+                grouped_samples = []
+                for dedup_key in sampled_group_ids:
+                    group_samples = groups[dedup_key]
+
+                    # Get representative_id from first sample if available
+                    first_sample_details = group_samples[0].get("_rejection_details", {})
+                    if isinstance(first_sample_details, str):
+                        try:
+                            first_sample_details = json.loads(first_sample_details)
+                        except json.JSONDecodeError:
+                            first_sample_details = {}
+                    rep_id = first_sample_details.get("representative_id", "")
+
+                    group_data = {
+                        "dedup_key": dedup_key,
+                        "representative_id": rep_id if rep_id else "(not tracked)",
+                        "duplicate_count": len(group_samples),
+                        "samples_shown": min(len(group_samples), max_samples_per_group),
+                        "duplicates": [],
+                    }
+
+                    # Only show up to max_samples_per_group samples
+                    for sample in group_samples[:max_samples_per_group]:
+                        display_sample = {}
+
+                        # Add other fields (excluding internal fields)
+                        for key, value in sample.items():
+                            if key.startswith("_"):
+                                continue
+                            if isinstance(value, bytes):
+                                display_sample[key] = f"<binary: {len(value)} bytes>"
+                            elif isinstance(value, str) and len(value) > 500:
+                                display_sample[key] = value[:500] + "..."
+                            else:
+                                display_sample[key] = value
+
+                        group_data["duplicates"].append(display_sample)
+
+                    try:
+                        json_str = json.dumps(group_data, indent=2, ensure_ascii=False, default=str)
+                    except Exception:
+                        json_str = str(group_data)
+                    grouped_samples.append(json_str)
+
+                section = {
+                    "operator_name": operator_name,
+                    "total_duplicates": total_duplicates,
+                    "total_groups": total_groups,
+                    "groups_shown": len(sampled_group_ids),
+                    "samples": grouped_samples,
+                }
+                dedup_sections.append(section)
+            else:
+                # Process filter samples as flat list
+                processed_samples = []
+                for sample in samples:
+                    sample_rejection_details = sample.get("_rejection_details", {})
+                    if isinstance(sample_rejection_details, str):
+                        try:
+                            sample_rejection_details = json.loads(sample_rejection_details)
+                        except json.JSONDecodeError:
+                            sample_rejection_details = {}
+
+                    display_sample = {}
+                    display_sample["__rejection_reason"] = sample_rejection_details.get("reason", "unknown")
+
+                    # Add other fields (excluding internal fields)
+                    for key, value in sample.items():
+                        if key.startswith("_"):
+                            continue
+                        if isinstance(value, bytes):
+                            display_sample[key] = f"<binary: {len(value)} bytes>"
+                        elif isinstance(value, str) and len(value) > 500:
+                            display_sample[key] = value[:500] + "..."
+                        else:
+                            display_sample[key] = value
+
+                    try:
+                        json_str = json.dumps(display_sample, indent=2, ensure_ascii=False, default=str)
+                    except Exception:
+                        json_str = str(display_sample)
+                    processed_samples.append(json_str)
+
+                section = {
+                    "operator_name": operator_name,
+                    "sample_count": len(processed_samples),
+                    "samples": processed_samples,
+                }
+                filter_sections.append(section)
+
+        return {"dedup": dedup_sections, "filter": filter_sections}
 
     def _generate_data_funnel(self, stage_df: pd.DataFrame, operator_df: pd.DataFrame | None) -> str:
         """Generate data quality funnel charts showing data loss at stage and operator levels."""
@@ -701,52 +1053,6 @@ class MetricsReporter:
         )
 
         chart_html = fig.to_html(include_plotlyjs=False, div_id="heatmap-chart", config={"responsive": True})
-        return chart_html
-
-    def _generate_throughput_latency_scatter(self, operator_df: pd.DataFrame) -> str:
-        """Generate scatter plot of throughput vs latency with bubble size = input_records."""
-        import plotly.graph_objects as go
-
-        operator_summary = (
-            operator_df.groupby("operator_name")
-            .agg({"throughput": "mean", "avg_latency": "mean", "input_records": "sum", "error_count": "sum"})
-            .reset_index()
-        )
-
-        # Convert latency from seconds to milliseconds for better readability
-        operator_summary["avg_latency_ms"] = operator_summary["avg_latency"] * 1000
-
-        fig = go.Figure(
-            data=go.Scatter(
-                x=operator_summary["avg_latency_ms"],
-                y=operator_summary["throughput"],
-                mode="markers+text",
-                marker={
-                    "size": operator_summary["input_records"] / operator_summary["input_records"].max() * 100,
-                    "color": operator_summary["error_count"],
-                    "colorscale": "Reds",
-                    "showscale": True,
-                    "colorbar": {"title": "Errors"},
-                    "line": {"width": 1, "color": "white"},
-                },
-                text=operator_summary["operator_name"],
-                textposition="top center",
-                textfont={"size": 10},
-                hovertemplate="<b>%{text}</b><br>Latency: %{x:.3f} ms<br>Throughput: %{y:,.0f} rec/s<extra></extra>",
-            )
-        )
-
-        fig.update_layout(
-            title="Throughput vs Latency Scatter (bubble size = input records, color = errors)",
-            xaxis_title="Average Latency (ms)",
-            yaxis_title="Throughput (records/s)",
-            xaxis_type="log",
-            yaxis_type="log",
-            height=500,
-            template="plotly_white",
-        )
-
-        chart_html = fig.to_html(include_plotlyjs=False, div_id="scatter-chart", config={"responsive": True})
         return chart_html
 
     def _generate_duration_waterfall(self, stage_df: pd.DataFrame) -> str:

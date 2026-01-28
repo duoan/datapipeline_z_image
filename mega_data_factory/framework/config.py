@@ -117,6 +117,7 @@ class MetricsConfig:
     collect_custom_metrics: bool = False  # Whether to collect custom metrics from operators
     write_on_completion: bool = True  # Whether to write metrics to Parquet on run completion
     generate_report: bool = False  # Whether to generate HTML visualization report
+    debug_samples_per_operator: int = 20  # Number of rejected samples to show per operator in debug section
     huggingface_repo: str | None = None  # HuggingFace Space repo ID for publishing (e.g., "username/space-name")
     huggingface_token: str | None = None  # HuggingFace API token (if None, uses HF_TOKEN env var)
 

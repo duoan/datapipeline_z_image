@@ -30,9 +30,12 @@ data_writer:
     output_path: "./output/commoncrawl"
 
 executor:
-  max_samples: 1000000
+  max_samples: 100000
   batch_size: 200
   dedup_num_buckets: 4
+  rejected_samples:
+    enabled: true
   metrics:
     enabled: true
     generate_report: true
+    debug_samples_per_operator: 20

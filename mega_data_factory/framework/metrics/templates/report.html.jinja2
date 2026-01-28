@@ -16,10 +16,98 @@
             color: #333;
         }
 
-        .container {
-            width: 100%;
+        /* Layout with sidebar */
+        .page-wrapper {
+            display: flex;
             min-height: 100vh;
+        }
+
+        /* Left Navigation Sidebar */
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-header h2 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header .run-id-short {
+            font-size: 11px;
+            opacity: 0.8;
+            word-break: break-all;
+        }
+
+        .nav-section {
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.5);
+            padding: 0 20px 10px;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 10px 20px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-left-color: #667eea;
+        }
+
+        .nav-link.active {
+            background: rgba(102, 126, 234, 0.2);
+            color: white;
+            border-left-color: #667eea;
+        }
+
+        .nav-link .nav-icon {
+            margin-right: 10px;
+        }
+
+        .nav-link .nav-badge {
+            float: right;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+
+        /* Main content area */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
             background: white;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
         .header {
@@ -44,6 +132,8 @@
             padding: 30px;
             margin-bottom: 30px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            scroll-margin-top: 20px;
+            overflow-x: auto;
         }
 
         .section h2 {
@@ -154,137 +244,334 @@
             font-size: 14px;
             border-top: 1px solid #e0e0e0;
         }
+
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Responsive: hide sidebar on small screens */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 200px;
+            }
+            .main-content {
+                margin-left: 200px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>📊 Pipeline Metrics Report</h1>
-            <div class="run-id">Run ID: {{ run_id }}</div>
-            <div class="timestamp">Generated: {{ timestamp }}</div>
-        </div>
-
-        <div class="content">
-            <!-- Executive Summary -->
-            <div class="section">
-                <h2>📊 Executive Summary</h2>
-                <div class="kpi-grid">
-                    <div class="kpi-card">
-                        <div class="kpi-label">Total Input</div>
-                        <div class="kpi-value">{{ "{:,}".format(run_metrics.total_input_records|int) }}</div>
-                        <div class="kpi-unit">records</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Total Output</div>
-                        <div class="kpi-value">{{ "{:,}".format(run_metrics.total_output_records|int) }}</div>
-                        <div class="kpi-unit">records</div>
-                    </div>
-                    <div class="kpi-card" style="background: {% if run_metrics.overall_pass_rate >= 80 %}#27ae60{% elif run_metrics.overall_pass_rate >= 50 %}#e67e22{% else %}#e74c3c{% endif %};">
-                        <div class="kpi-label" style="color: rgba(255,255,255,0.9);">Overall Pass Rate</div>
-                        <div class="kpi-value">{{ "%.1f"|format(run_metrics.overall_pass_rate) }}%</div>
-                        <div class="kpi-unit" style="color: rgba(255,255,255,0.9);">quality score</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Duration</div>
-                        <div class="kpi-value">{{ "%.2f"|format(run_metrics.duration) }}s</div>
-                        <div class="kpi-unit">execution time</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Throughput</div>
-                        <div class="kpi-value">{{ "%.1f"|format(run_metrics.avg_throughput) }}</div>
-                        <div class="kpi-unit">records/s</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Stages</div>
-                        <div class="kpi-value">{{ run_metrics.num_stages }}</div>
-                        <div class="kpi-unit">pipeline stages</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Filtered</div>
-                        <div class="kpi-value">{{ "{:,}".format((run_metrics.total_input_records - run_metrics.total_output_records)|int) }}</div>
-                        <div class="kpi-unit">records ({{ "%.1f"|format((run_metrics.total_input_records - run_metrics.total_output_records) / run_metrics.total_input_records * 100) }}%)</div>
-                    </div>
-                    <div class="kpi-card" style="background: {% if run_metrics.total_errors == 0 %}#27ae60{% else %}#e74c3c{% endif %};">
-                        <div class="kpi-label" style="color: rgba(255,255,255,0.9);">Errors</div>
-                        <div class="kpi-value">{{ run_metrics.total_errors }}</div>
-                        <div class="kpi-unit" style="color: rgba(255,255,255,0.9);">error count</div>
-                    </div>
-                </div>
+    <div class="page-wrapper">
+        <!-- Left Navigation Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>📊 Metrics Report</h2>
+                <div class="run-id-short">{{ run_id }}</div>
             </div>
 
-            <!-- Visualizations -->
-            {% for chart in charts %}
-            <div class="section">
-                <h2>{{ chart.title }}</h2>
-                {% if chart.description %}
-                <p style="margin-bottom: 15px; color: #666;">{{ chart.description }}</p>
-                {% endif %}
-                {% if chart.alert %}
-                    {% if chart.alert is mapping %}
-                    {# Structured alert data (bottleneck analysis) #}
-                    <div class="alert alert-warning">
-                        <strong>⚠️ Bottleneck Detected:</strong><br>
-                        Slowest Stage: <strong>{{ chart.alert.slowest_stage_name }}</strong>
-                        ({{ "%.2f"|format(chart.alert.slowest_stage_time) }}s, {{ "%.1f"|format(chart.alert.slowest_stage_throughput) }} rec/s)<br>
-                        Slowest Operator: <strong>{{ chart.alert.slowest_operator_name }}</strong>
-                        ({{ "%.1f"|format(chart.alert.slowest_operator_throughput) }} rec/s, {{ "%.3f"|format(chart.alert.slowest_operator_latency) }}s latency)
-                    </div>
-                    {% else %}
-                    {# Legacy HTML alert #}
-                    <div class="alert alert-warning">
-                        {{ chart.alert|safe }}
-                    </div>
-                    {% endif %}
-                {% endif %}
-                {{ chart.html|safe }}
+            <div class="nav-section">
+                <div class="nav-section-title">Overview</div>
+                <a href="#summary" class="nav-link">
+                    <span class="nav-icon">📊</span>Executive Summary
+                </a>
             </div>
-            {% endfor %}
 
-            <!-- Detailed Tables -->
-            {% if tables %}
-            <div class="section">
-                <h2>📋 Detailed Metrics</h2>
-                {% for table in tables %}
-                <h3 style="margin-top: 30px; color: #667eea;">{{ table.title }}</h3>
-                <div class="table-wrapper">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                {% for col in table.columns %}
-                                <th>{{ col|replace('_', ' ')|title }}</th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in table.rows %}
-                            <tr>
-                                {% for col in table.columns %}
-                                <td>
-                                    {% if col in table.formats %}
-                                        {{ row[col]|format_metric(table.formats[col][0], table.formats[col][1]) }}
-                                    {% else %}
-                                        {{ row[col] }}
-                                    {% endif %}
-                                </td>
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+            {% if charts %}
+            <div class="nav-section">
+                <div class="nav-section-title">Visualizations</div>
+                {% for chart in charts %}
+                <a href="#chart-{{ loop.index }}" class="nav-link">
+                    {% set title_parts = chart.title.split(' ', 1) %}
+                    <span class="nav-icon">{{ title_parts[0] }}</span>{{ title_parts[1] if title_parts|length > 1 else '' }}
+                </a>
                 {% endfor %}
             </div>
             {% endif %}
-        </div>
 
-        <div class="footer">
-            <p>Generated by Mega Data Factory | Powered by Plotly</p>
-            <p style="margin-top: 5px; font-size: 12px;">
-                Pipeline: {{ run_metrics.num_stages }} stages |
-                Duration: {{ "%.2f"|format(run_metrics.duration) }}s |
-                Throughput: {{ "%.1f"|format(run_metrics.avg_throughput) }} rec/s
-            </p>
+            {% if tables %}
+            <div class="nav-section">
+                <div class="nav-section-title">Tables</div>
+                <a href="#detailed-metrics" class="nav-link">
+                    <span class="nav-icon">📋</span>Detailed Metrics
+                </a>
+            </div>
+            {% endif %}
+
+            <div class="nav-section">
+                <div class="nav-section-title">Debug</div>
+                {% if output_samples and output_samples|length > 0 %}
+                <a href="#output-samples" class="nav-link">
+                    <span class="nav-icon">📤</span>Output Samples
+                    <span class="nav-badge">{{ output_samples|length }}</span>
+                </a>
+                {% endif %}
+                {% if debug_sections and debug_sections.dedup %}
+                <a href="#dedup-samples" class="nav-link">
+                    <span class="nav-icon">🔄</span>Deduplicated
+                    <span class="nav-badge">{{ debug_sections.dedup|sum(attribute='total_duplicates') }}</span>
+                </a>
+                {% endif %}
+                {% if debug_sections and debug_sections.filter %}
+                <a href="#filtered-samples" class="nav-link">
+                    <span class="nav-icon">🚫</span>Filtered
+                    <span class="nav-badge">{{ debug_sections.filter|sum(attribute='sample_count') }}</span>
+                </a>
+                {% endif %}
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <h1>📊 Pipeline Metrics Report</h1>
+                <div class="run-id">Run ID: {{ run_id }}</div>
+                <div class="timestamp">Generated: {{ timestamp }}</div>
+            </div>
+
+            <div class="content">
+                <!-- Executive Summary -->
+                <div class="section" id="summary">
+                    <h2>📊 Executive Summary</h2>
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-label">Total Input</div>
+                            <div class="kpi-value">{{ "{:,}".format(run_metrics.total_input_records|int) }}</div>
+                            <div class="kpi-unit">records</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Total Output</div>
+                            <div class="kpi-value">{{ "{:,}".format(run_metrics.total_output_records|int) }}</div>
+                            <div class="kpi-unit">records</div>
+                        </div>
+                        <div class="kpi-card" style="background: {% if run_metrics.overall_pass_rate >= 80 %}#27ae60{% elif run_metrics.overall_pass_rate >= 50 %}#e67e22{% else %}#e74c3c{% endif %};">
+                            <div class="kpi-label" style="color: rgba(255,255,255,0.9);">Overall Pass Rate</div>
+                            <div class="kpi-value">{{ "%.1f"|format(run_metrics.overall_pass_rate) }}%</div>
+                            <div class="kpi-unit" style="color: rgba(255,255,255,0.9);">quality score</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Duration</div>
+                            <div class="kpi-value">{{ "%.2f"|format(run_metrics.duration) }}s</div>
+                            <div class="kpi-unit">execution time</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Throughput</div>
+                            <div class="kpi-value">{{ "%.1f"|format(run_metrics.avg_throughput) }}</div>
+                            <div class="kpi-unit">records/s</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Stages</div>
+                            <div class="kpi-value">{{ run_metrics.num_stages }}</div>
+                            <div class="kpi-unit">pipeline stages</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Filtered</div>
+                            <div class="kpi-value">{{ "{:,}".format((run_metrics.total_input_records - run_metrics.total_output_records)|int) }}</div>
+                            <div class="kpi-unit">records ({{ "%.1f"|format((run_metrics.total_input_records - run_metrics.total_output_records) / run_metrics.total_input_records * 100) }}%)</div>
+                        </div>
+                        <div class="kpi-card" style="background: {% if run_metrics.total_errors == 0 %}#27ae60{% else %}#e74c3c{% endif %};">
+                            <div class="kpi-label" style="color: rgba(255,255,255,0.9);">Errors</div>
+                            <div class="kpi-value">{{ run_metrics.total_errors }}</div>
+                            <div class="kpi-unit" style="color: rgba(255,255,255,0.9);">error count</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualizations -->
+                {% for chart in charts %}
+                <div class="section" id="chart-{{ loop.index }}">
+                    <h2>{{ chart.title }}</h2>
+                    {% if chart.description %}
+                    <p style="margin-bottom: 15px; color: #666;">{{ chart.description }}</p>
+                    {% endif %}
+                    {% if chart.alert %}
+                        {% if chart.alert is mapping %}
+                        {# Structured alert data (bottleneck analysis) #}
+                        <div class="alert alert-warning">
+                            <strong>⚠️ Bottleneck Detected:</strong><br>
+                            Slowest Stage: <strong>{{ chart.alert.slowest_stage_name }}</strong>
+                            ({{ "%.2f"|format(chart.alert.slowest_stage_time) }}s, {{ "%.1f"|format(chart.alert.slowest_stage_throughput) }} rec/s)<br>
+                            Slowest Operator: <strong>{{ chart.alert.slowest_operator_name }}</strong>
+                            ({{ "%.1f"|format(chart.alert.slowest_operator_throughput) }} rec/s, {{ "%.3f"|format(chart.alert.slowest_operator_latency) }}s latency)
+                        </div>
+                        {% else %}
+                        {# Legacy HTML alert #}
+                        <div class="alert alert-warning">
+                            {{ chart.alert|safe }}
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                    {{ chart.html|safe }}
+                </div>
+                {% endfor %}
+
+                <!-- Detailed Tables -->
+                {% if tables %}
+                <div class="section" id="detailed-metrics">
+                    <h2>📋 Detailed Metrics</h2>
+                    {% for table in tables %}
+                    <h3 style="margin-top: 30px; color: #667eea;">{{ table.title }}</h3>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    {% for col in table.columns %}
+                                    <th>{{ col|replace('_', ' ')|title }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in table.rows %}
+                                <tr>
+                                    {% for col in table.columns %}
+                                    <td>
+                                        {% if col in table.formats %}
+                                            {{ row[col]|format_metric(table.formats[col][0], table.formats[col][1]) }}
+                                        {% else %}
+                                            {{ row[col] }}
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Debug Section: Output Samples Preview -->
+                {% if output_samples and output_samples|length > 0 %}
+                <div class="section" id="output-samples">
+                    <h2>📤 Output Samples Preview</h2>
+                    <p style="margin-bottom: 20px; color: #666;">
+                        Preview of output samples to verify the pipeline output is correct.
+                        <span style="font-size: 14px; color: #888;">({{ output_samples|length }} samples shown)</span>
+                    </p>
+
+                    <div style="max-height: 600px; overflow-y: auto;">
+                        {% for sample_json in output_samples %}
+                        <div style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #27ae60;">
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Output Sample #{{ loop.index }}</div>
+                            <pre style="margin: 0; padding: 10px; background: #2d3436; color: #dfe6e9; border-radius: 4px; font-size: 11px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">{{ sample_json }}</pre>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Debug Section: Deduplicated Samples -->
+                {% if debug_sections and debug_sections.dedup %}
+                <div class="section" id="dedup-samples">
+                    <h2>🔄 Debug: Deduplicated Samples</h2>
+                    <p style="margin-bottom: 20px; color: #666;">
+                        Samples removed by deduplication operators, grouped by the representative sample they duplicate.
+                    </p>
+
+                    {% for debug_section in debug_sections.dedup %}
+                    <div class="debug-operator-section">
+                        <h3 style="margin-top: 20px; color: #9b59b6; border-left: 4px solid #9b59b6; padding-left: 12px;">
+                            {{ debug_section.operator_name }}
+                        </h3>
+                        <p style="margin: 10px 0; color: #666; font-size: 14px;">
+                            <strong>{{ debug_section.total_duplicates }}</strong> total duplicates in
+                            <strong>{{ debug_section.total_groups }}</strong> groups
+                            (showing {{ debug_section.groups_shown }} groups, up to 5 samples each)
+                        </p>
+
+                        <div style="max-height: 600px; overflow-y: auto;">
+                            {% for sample_json in debug_section.samples %}
+                            <div style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #9b59b6;">
+                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Duplicate Group #{{ loop.index }}</div>
+                                <pre style="margin: 0; padding: 10px; background: #2d3436; color: #dfe6e9; border-radius: 4px; font-size: 11px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">{{ sample_json }}</pre>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Debug Section: Filtered Samples -->
+                {% if debug_sections and debug_sections.filter %}
+                <div class="section" id="filtered-samples">
+                    <h2>🚫 Debug: Filtered Samples</h2>
+                    <p style="margin-bottom: 20px; color: #666;">
+                        Samples removed by filter operators. Shows the record that didn't pass the filter criteria.
+                    </p>
+
+                    {% for debug_section in debug_sections.filter %}
+                    <div class="debug-operator-section">
+                        <h3 style="margin-top: 20px; color: #e74c3c; border-left: 4px solid #e74c3c; padding-left: 12px;">
+                            {{ debug_section.operator_name }}
+                            <span style="font-size: 14px; color: #666; font-weight: normal;">
+                                ({{ debug_section.sample_count }} samples shown)
+                            </span>
+                        </h3>
+
+                        <div style="max-height: 500px; overflow-y: auto;">
+                            {% for sample_json in debug_section.samples %}
+                            <div style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #e74c3c;">
+                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Sample #{{ loop.index }}</div>
+                                <pre style="margin: 0; padding: 10px; background: #2d3436; color: #dfe6e9; border-radius: 4px; font-size: 11px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">{{ sample_json }}</pre>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="footer">
+                    <p>Generated by Mega Data Factory | Powered by Plotly</p>
+                    <p style="margin-top: 5px; font-size: 12px;">
+                        Pipeline: {{ run_metrics.num_stages }} stages |
+                        Duration: {{ "%.2f"|format(run_metrics.duration) }}s |
+                        Throughput: {{ "%.1f"|format(run_metrics.avg_throughput) }} rec/s
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
+
+    <script>
+        // Highlight active nav link on scroll
+        document.addEventListener('DOMContentLoaded', function() {
+            const sections = document.querySelectorAll('.section[id]');
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            function highlightNavOnScroll() {
+                let scrollPos = window.scrollY + 100;
+
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.offsetHeight;
+                    const sectionId = section.getAttribute('id');
+
+                    if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href') === '#' + sectionId) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }
+
+            window.addEventListener('scroll', highlightNavOnScroll);
+            highlightNavOnScroll(); // Initial call
+        });
+    </script>
 </body>
 </html>
