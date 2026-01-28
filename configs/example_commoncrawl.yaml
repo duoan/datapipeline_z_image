@@ -4,7 +4,7 @@ data_loader:
   type: CommonCrawlLoader
   params:
     crawl_id: "CC-MAIN-2024-51"
-  num_workers: 8
+  num_workers: 16
 
 stages:
   - name: content_filtering
@@ -30,8 +30,8 @@ data_writer:
     output_path: "./output/commoncrawl"
 
 executor:
-  max_samples: 10000
-  batch_size: 1000
+  max_samples: 1000000
+  batch_size: 200
   dedup_num_buckets: 4
   metrics:
     enabled: true

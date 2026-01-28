@@ -7,9 +7,8 @@
 //! - `image_compute_phash_batch`: Perceptual hash computation
 //!
 //! ## Text Operations (`text_ops`)
-//! - `html_extract_text_batch`: Extract readable text from HTML
-//! - `warc_extract_records`: Parse WARC.gz and extract text in one pass
-//! - `warc_extract_records_batch`: Parallel WARC file processing
+//! - `html_extract_text`: Extract readable text from a single HTML string
+//! - `html_extract_text_batch`: Extract readable text from multiple HTML strings (parallel)
 
 mod image_ops;
 mod text_ops;
@@ -18,7 +17,7 @@ use pyo3::prelude::*;
 
 // Re-export all public functions
 pub use image_ops::{image_assess_quality_batch, image_compute_phash_batch};
-pub use text_ops::{warc_extract_records, warc_extract_records_batch};
+pub use text_ops::{html_extract_text, html_extract_text_batch};
 
 /// Python module definition
 #[pymodule]
@@ -27,9 +26,9 @@ fn rust_operators(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(image_ops::image_assess_quality_batch, m)?)?;
     m.add_function(wrap_pyfunction!(image_ops::image_compute_phash_batch, m)?)?;
 
-    // Text operations
-    m.add_function(wrap_pyfunction!(text_ops::warc_extract_records, m)?)?;
-    m.add_function(wrap_pyfunction!(text_ops::warc_extract_records_batch, m)?)?;
+    // Text operations - HTML extraction
+    m.add_function(wrap_pyfunction!(text_ops::html_extract_text, m)?)?;
+    m.add_function(wrap_pyfunction!(text_ops::html_extract_text_batch, m)?)?;
 
     Ok(())
 }

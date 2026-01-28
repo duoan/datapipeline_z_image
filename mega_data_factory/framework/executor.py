@@ -158,10 +158,7 @@ class Executor:
             min_replicas = stage_config.worker.min_replicas
             max_replicas = stage_config.worker.max_replicas
 
-            print(
-                f"  Creating workers for stage '{stage_config.name}': "
-                f"min={min_replicas}, max={max_replicas}"
-            )
+            print(f"  Creating workers for stage '{stage_config.name}': min={min_replicas}, max={max_replicas}")
 
             # Try to create up to max_replicas workers
             stage_workers = []  # Successfully created workers
@@ -227,10 +224,7 @@ class Executor:
                 )
 
             if failed_count > 0:
-                print(
-                    f"    ⚠️  {failed_count} workers failed to create, "
-                    f"using {actual_workers}/{max_replicas} workers"
-                )
+                print(f"    ⚠️  {failed_count} workers failed to create, using {actual_workers}/{max_replicas} workers")
             print(f"    ✅ {actual_workers}/{max_replicas} workers created for stage '{stage_config.name}'")
 
             # Add all ready workers for this stage as a group
@@ -312,23 +306,27 @@ class Executor:
 
         print(f"Created {len(self.loader_workers)} DataLoaderWorker actors")
 
-    def _submit_batch_chain(self, records: list[dict[str, Any]]) -> tuple[ray.ObjectRef, list[ray.ObjectRef]]:
+    def _submit_batch_chain(self, batch_ref: ray.ObjectRef) -> tuple[ray.ObjectRef, list[ray.ObjectRef]]:
         """Submit a batch through all stages using Ray ObjectRef chaining.
 
         Core magic: Pass ObjectRefs like a chain. Ray automatically waits for
         previous task to complete and unpacks the result for the next task.
 
+        ZERO-COPY OPTIMIZATION: Accepts ObjectRef directly from loader worker,
+        avoiding data round-trip through driver. Data flows:
+        Loader Worker -> Object Store -> Stage Workers (driver never touches data)
+
         Only the last stage writes data to improve I/O efficiency.
 
         Args:
-            records: List of input records
+            batch_ref: ObjectRef to batch data already in Ray object store
 
         Returns:
             Tuple of (final_ref, all_intermediate_refs) for cleanup
         """
-        # Start with initial data (can be actual data or ObjectRef if from elsewhere)
-        # Here we put raw data into object store to get a Ref for unified handling
-        current_ref = ray.put(records)
+        # Start with the ObjectRef from loader (already in object store)
+        # No ray.put() needed - data is already there!
+        current_ref = batch_ref
         all_refs = [current_ref]  # Track all refs for cleanup
 
         # Chain through all stages
@@ -477,9 +475,7 @@ class Executor:
         print("Starting streaming from DataLoaderWorker actors...")
         initial_requests = min(max_in_flight, len(self.loader_workers))
         for worker_id in list(active_loaders)[:initial_requests]:
-            future = self.loader_workers[worker_id].get_next_batch.remote(
-                max_records=max_records_per_worker
-            )
+            future = self.loader_workers[worker_id].get_next_batch.remote(max_records=max_records_per_worker)
             loader_futures[worker_id] = future
 
         # Main loop: continuously poll loader workers and submit batches
@@ -502,28 +498,34 @@ class Executor:
                             break
 
                     if worker_id is not None:
-                        # Get batch result
+                        # Get batch metadata (NOT the actual batch data!)
+                        # ZERO-COPY OPTIMIZATION: We only fetch metadata, not the batch itself
+                        # The batch_ref stays in object store and is passed directly to stages
                         result = ray.get(completed_ref)
-                        # CRITICAL: Free the loader's result ref immediately after getting data
-                        try:
-                            ray._private.internal_api.free([completed_ref])
-                        except Exception:
-                            pass
                         del loader_futures[worker_id]
 
-                        batch = result["batch"]
+                        batch_ref = result["batch_ref"]
+                        batch_size = result["batch_size"]
                         completed = result["completed"]
 
-                        if batch:
-                            # Submit batch immediately to processing pipeline
+                        if batch_ref is not None:
+                            # Submit batch_ref directly to processing pipeline (zero-copy!)
+                            # Data flows: Loader Worker -> Object Store -> Stage Workers
+                            # Driver never touches the actual batch data
                             loader_batch_counts[worker_id] += 1
-                            final_ref, all_refs = self._submit_batch_chain(batch)
-                            batch_pipeline[next_batch_id] = (final_ref, len(batch), all_refs)
+                            print(
+                                f"[Batch {next_batch_id}] Submitting batch_ref from loader {worker_id} (size={batch_size})"
+                            )
+                            final_ref, all_refs = self._submit_batch_chain(batch_ref)
+                            batch_pipeline[next_batch_id] = (final_ref, batch_size, all_refs)
                             next_batch_id += 1
 
                             # Collect completed processing batches (non-blocking)
                             for res in self._collect_completed(batch_pipeline, max_in_flight):
                                 yield res
+
+                        # Re-check pipeline capacity after potentially collecting completed batches
+                        pipeline_has_capacity = len(batch_pipeline) < max_in_flight
 
                         # BACKPRESSURE: Only request next batch if pipeline has capacity
                         if not completed and pipeline_has_capacity:
@@ -600,10 +602,7 @@ class Executor:
             time_sec = stats.get("total_time_sec", 0.0)
             throughput = stats.get("throughput_records_per_sec", 0.0)
             batches = stats.get("batches_produced", 0)
-            print(
-                f"  Loader {shard_id}: {records} records, {batches} batches, "
-                f"{time_sec:.2f}s, {throughput:.2f} rec/s"
-            )
+            print(f"  Loader {shard_id}: {records} records, {batches} batches, {time_sec:.2f}s, {throughput:.2f} rec/s")
 
         # Print aggregate stats
         if total_time > 0:
@@ -636,7 +635,10 @@ class Executor:
             print(f"Metrics written to: {self.metrics_writer.output_path}")
 
             # Generate HTML report if enabled
-            if hasattr(self.config.executor.metrics, "generate_report") and self.config.executor.metrics.generate_report:
+            if (
+                hasattr(self.config.executor.metrics, "generate_report")
+                and self.config.executor.metrics.generate_report
+            ):
                 self._generate_metrics_report()
 
     def _collect_metrics_from_workers(self):

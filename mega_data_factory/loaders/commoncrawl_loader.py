@@ -1,4 +1,4 @@
-"""CommonCrawl WARC DataLoader with Rust-accelerated text extraction."""
+"""CommonCrawl WARC DataLoader with streaming and Rust-accelerated text extraction."""
 
 from __future__ import annotations
 
@@ -9,12 +9,18 @@ from collections.abc import Iterator
 from typing import Any
 
 import requests
+from warcio.archiveiterator import ArchiveIterator
 
 from mega_data_factory.framework import DataLoader
 
 
 class CommonCrawlLoader(DataLoader):
-    """Streaming WARC loader with Rust text extraction."""
+    """Streaming WARC loader with Rust text extraction.
+
+    Uses Python warcio for streaming WARC parsing (yields records as they're parsed)
+    and Rust for fast HTML text extraction. This enables true streaming where
+    downstream stages can start processing before the entire file is parsed.
+    """
 
     def __init__(
         self,
@@ -65,39 +71,78 @@ class CommonCrawlLoader(DataLoader):
     ) -> Iterator[dict[str, Any]]:
         """Load WARC files and yield records with extracted text.
 
-        Uses Rust-accelerated WARC parsing for 5-10x faster processing:
-        - flate2 for gzip decompression (faster than Python gzip)
-        - Native WARC parsing (faster than warcio)
-        - Parallel text extraction with rayon
+        TRUE STREAMING: Uses Python warcio for streaming WARC parsing, yielding
+        records as they're parsed. Rust is used only for HTML text extraction.
+        This enables downstream stages to start processing immediately.
         """
-        from mega_data_factory.rust_operators import warc_extract_records
+        from mega_data_factory.rust_operators import html_extract_text
 
         label = f"W{worker_id}" if worker_id is not None else "L"
         skip = checkpoint.get("records_processed", 0) if checkpoint else 0
         count = 0
+        yielded = 0
 
         for warc_path in file_list:
+            print(f"[{label}] Starting to process: {warc_path.split('/')[-1]}")
             local_path = self._download(warc_path)
+            print(f"[{label}] File ready, opening: {local_path.split('/')[-1]}")
 
-            # 🦀 Rust: decompress + parse WARC + extract text in one call
-            records = warc_extract_records(local_path)
+            # Stream WARC records using Python warcio - yields as it parses!
+            with open(local_path, "rb") as f:
+                print(f"[{label}] Starting ArchiveIterator...")
+                record_count = 0
+                for record in ArchiveIterator(f):
+                    record_count += 1
+                    if record_count == 1:
+                        print(f"[{label}] First record received from ArchiveIterator")
+                    # Skip non-response records
+                    if record.rec_type != "response":
+                        continue
 
-            for url, warc_date, title, text, text_length in records:
-                count += 1
-                if count <= skip:
-                    continue
+                    # Get URL and date from headers
+                    url = record.rec_headers.get_header("WARC-Target-URI", "")
+                    warc_date = record.rec_headers.get_header("WARC-Date", "")
 
-                yield {
-                    "crawl_id": self.crawl_id,
-                    "warc_path": warc_path,
-                    "url": url,
-                    "warc_date": warc_date,
-                    "title": title,
-                    "text": text,
-                    "text_length": text_length,
-                }
+                    # Check content type
+                    content_type = record.http_headers.get_header("Content-Type", "") if record.http_headers else ""
+                    if "text/html" not in content_type.lower():
+                        continue
 
-        print(f"[{label}] {count} records")
+                    # Read HTML content
+                    try:
+                        html_content = record.content_stream().read().decode("utf-8", errors="ignore")
+                    except Exception:
+                        continue
+
+                    if not html_content or len(html_content) < 100:
+                        continue
+
+                    count += 1
+                    if count <= skip:
+                        continue
+
+                    # 🦀 Rust: Extract text from HTML (fast!)
+                    result = html_extract_text(html_content)
+                    if result is None:
+                        continue
+
+                    title, text, text_length = result
+                    yielded += 1
+
+                    if yielded == 1:
+                        print(f"[{label}] First record yielded!")
+
+                    yield {
+                        "crawl_id": self.crawl_id,
+                        "warc_path": warc_path,
+                        "url": url,
+                        "warc_date": warc_date,
+                        "title": title,
+                        "text": text,
+                        "text_length": text_length,
+                    }
+
+        print(f"[{label}] Streaming: {count} HTML records parsed, {yielded} yielded")
 
     def _download(self, warc_path: str) -> str:
         """Download WARC to cache."""
@@ -125,6 +170,6 @@ class CommonCrawlLoader(DataLoader):
             except Exception as e:
                 if attempt == 2:
                     raise RuntimeError(f"Download failed: {warc_path}") from e
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
 
         return local_path

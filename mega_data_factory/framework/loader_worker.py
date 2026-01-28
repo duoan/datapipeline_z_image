@@ -100,13 +100,17 @@ class DataLoaderWorker:
         Uses a persistent iterator that is refreshed periodically (based on
         iterator_refresh_interval) to prevent memory accumulation.
 
+        IMPORTANT: Returns batch data as ObjectRef to avoid pulling data back to driver.
+        The batch_ref can be passed directly to downstream stages for zero-copy processing.
+
         Args:
             max_records: Optional override for maximum records (None = use self.max_records)
             **kwargs: Additional parameters (not used in streaming mode)
 
         Returns:
             Dictionary with:
-                - 'batch': List of records (or None if completed)
+                - 'batch_ref': ObjectRef to batch data in Ray object store (or None if completed)
+                - 'batch_size': Number of records in the batch (for tracking without fetching data)
                 - 'records_processed': Total records processed so far
                 - 'completed': Boolean indicating if loading is complete
         """
@@ -123,7 +127,8 @@ class DataLoaderWorker:
         if effective_max_records and self.records_processed >= effective_max_records:
             self.end_time = time.time()
             return {
-                "batch": None,
+                "batch_ref": None,
+                "batch_size": 0,
                 "records_processed": self.records_processed,
                 "completed": True,
             }
@@ -142,14 +147,21 @@ class DataLoaderWorker:
         batch = []
         records_in_this_batch = 0
 
+        print(f"[DataLoaderWorker {self.shard_id}] Starting to collect batch (batch_size={self.batch_size})")
+
         try:
             for record in self._data_stream:
                 batch.append(record)
                 self.records_processed += 1
                 records_in_this_batch += 1
 
+                # Log progress every 100 records
+                if records_in_this_batch % 100 == 0:
+                    print(f"[DataLoaderWorker {self.shard_id}] Collected {records_in_this_batch} records...")
+
                 # Return batch when full
                 if len(batch) >= self.batch_size:
+                    print(f"[DataLoaderWorker {self.shard_id}] Batch full! Returning {len(batch)} records")
                     # Update checkpoint to current position
                     self.checkpoint = self.data_loader.create_checkpoint(
                         shard_id=self.shard_id,
@@ -167,8 +179,11 @@ class DataLoaderWorker:
                     self.total_load_time += time.time() - batch_start
                     self.batches_produced += 1
 
+                    # Put batch into object store and return ref (zero-copy to downstream)
+                    batch_ref = ray.put(batch)
                     return {
-                        "batch": batch,
+                        "batch_ref": batch_ref,
+                        "batch_size": len(batch),
                         "records_processed": self.records_processed,
                         "completed": False,
                     }
@@ -187,9 +202,18 @@ class DataLoaderWorker:
                     self.batches_produced += 1
                     self.end_time = time.time()
 
-                    # Return partial batch if any
+                    # Return partial batch if any (as ObjectRef)
+                    if batch:
+                        batch_ref = ray.put(batch)
+                        return {
+                            "batch_ref": batch_ref,
+                            "batch_size": len(batch),
+                            "records_processed": self.records_processed,
+                            "completed": True,
+                        }
                     return {
-                        "batch": batch if batch else None,
+                        "batch_ref": None,
+                        "batch_size": 0,
                         "records_processed": self.records_processed,
                         "completed": True,
                     }
@@ -207,8 +231,18 @@ class DataLoaderWorker:
                 self.batches_produced += 1
             self.end_time = time.time()
 
+            # Return partial batch as ObjectRef
+            if batch:
+                batch_ref = ray.put(batch)
+                return {
+                    "batch_ref": batch_ref,
+                    "batch_size": len(batch),
+                    "records_processed": self.records_processed,
+                    "completed": True,
+                }
             return {
-                "batch": batch if batch else None,
+                "batch_ref": None,
+                "batch_size": 0,
                 "records_processed": self.records_processed,
                 "completed": True,
             }
@@ -227,8 +261,18 @@ class DataLoaderWorker:
                 self.batches_produced += 1
             self.end_time = time.time()
 
+            # Return partial batch as ObjectRef
+            if batch:
+                batch_ref = ray.put(batch)
+                return {
+                    "batch_ref": batch_ref,
+                    "batch_size": len(batch),
+                    "records_processed": self.records_processed,
+                    "completed": True,
+                }
             return {
-                "batch": batch if batch else None,
+                "batch_ref": None,
+                "batch_size": 0,
                 "records_processed": self.records_processed,
                 "completed": True,
             }
