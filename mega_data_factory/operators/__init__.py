@@ -16,4 +16,7 @@ from . import (
     refiners,  # noqa: F401
 )
 
-__all__ = []
+# Export common mixins
+from .video_operator import VideoOperatorMixin
+
+__all__ = ["VideoOperatorMixin"]

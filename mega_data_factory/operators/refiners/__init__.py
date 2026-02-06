@@ -22,8 +22,20 @@ def _register_image_refiners():
     OperatorRegistry.register("ImageAIGCDetectorRefiner", ImageAIGCDetectorRefiner)
 
 
+def _register_video_refiners():
+    """Lazy register video refiners."""
+    from .video_metadata import VideoMetadataRefiner
+
+    OperatorRegistry.register("VideoMetadataRefiner", VideoMetadataRefiner)
+
+
 try:
     _register_image_refiners()
+except ImportError:
+    pass
+
+try:
+    _register_video_refiners()
 except ImportError:
     pass
 

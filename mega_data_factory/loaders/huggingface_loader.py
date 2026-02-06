@@ -27,6 +27,7 @@ class HuggingFaceLoader(DataLoader):
     def __init__(
         self,
         dataset_name: str,
+        subset: str | None = None,
         split: str = "train",
     ):
         """Initialize file-based HuggingFace loader.
@@ -36,6 +37,7 @@ class HuggingFaceLoader(DataLoader):
             split: Dataset split (default: "train")
         """
         self.dataset_name = dataset_name
+        self.subset = subset
         self.split = split
         self._file_list = None
 
@@ -53,23 +55,75 @@ class HuggingFaceLoader(DataLoader):
             return self._file_list
 
         from huggingface_hub import HfFileSystem
+
         fs = HfFileSystem()
         repo_path = f"datasets/{self.dataset_name}"
 
-        # List files in data directory
-        try:
-            files = fs.ls(f"{repo_path}/data", detail=True)
-        except Exception:
-            # Fallback: try root directory
-            files = fs.ls(repo_path, detail=True)
+        # Build list of paths to try, in order of priority
+        # HuggingFace datasets can organize files in different ways:
+        # 1. data/{subset}/{split}/ - subset with split subdirectory
+        # 2. data/{subset}/ - subset directory with split in filename
+        # 3. {subset}/ - subset at root level
+        # 4. data/{split}/ - split directory (no subset)
+        # 5. data/ - all files in data directory
+        # 6. root - files at repository root
+        paths_to_try = []
 
-        # Filter for data files (parquet, arrow, csv)
+        if self.subset:
+            # Try subset-specific paths first
+            paths_to_try.extend(
+                [
+                    f"{repo_path}/data/{self.subset}/{self.split}",
+                    f"{repo_path}/data/{self.subset}",
+                    f"{repo_path}/{self.subset}",
+                ]
+            )
+
+        # Then try common paths
+        paths_to_try.extend(
+            [
+                f"{repo_path}/data/{self.split}",
+                f"{repo_path}/data",
+                repo_path,
+            ]
+        )
+
+        # Try each path until we find data files
         data_extensions = (".parquet", ".arrow", ".csv", ".jsonl")
-        data_files = [f["name"] for f in files if any(f["name"].endswith(ext) for ext in data_extensions)]
+        data_files = []
+
+        for path in paths_to_try:
+            try:
+                files = fs.ls(path, detail=True)
+                # Filter for data files
+                candidates = [f["name"] for f in files if any(f["name"].endswith(ext) for ext in data_extensions)]
+
+                # If subset is specified, filter files that match the subset/split pattern
+                if self.subset and candidates:
+                    # Filter files that contain the subset name or split name in the path
+                    filtered = [f for f in candidates if self.subset in f or self.split in f]
+                    if filtered:
+                        candidates = filtered
+
+                # Filter by split name in filename if we have candidates
+                if candidates:
+                    split_filtered = [f for f in candidates if self.split in f.split("/")[-1]]
+                    if split_filtered:
+                        candidates = split_filtered
+
+                if candidates:
+                    data_files = candidates
+                    break
+            except Exception:
+                continue
 
         # Sort by filename for consistent ordering
         self._file_list = sorted(data_files)
-        print(f"[HuggingFaceLoader] Found {len(self._file_list)} data files for {self.dataset_name}/{self.split}")
+
+        subset_info = f"/{self.subset}" if self.subset else ""
+        print(
+            f"[HuggingFaceLoader] Found {len(self._file_list)} data files for {self.dataset_name}{subset_info}/{self.split}"
+        )
 
         return self._file_list
 
@@ -126,6 +180,8 @@ class HuggingFaceLoader(DataLoader):
                     records_yielded += 1
                     yield record
 
-            print(f"[{worker_label}] Completed file {file_idx + 1}/{len(file_list)}, total records processed: {total_records}")
+            print(
+                f"[{worker_label}] Completed file {file_idx + 1}/{len(file_list)}, total records processed: {total_records}"
+            )
 
         print(f"[{worker_label}] Completed all {len(file_list)} files (yielded {records_yielded} records)")

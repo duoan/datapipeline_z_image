@@ -202,6 +202,18 @@ class Operator(ABC):
         """
         return {}
 
+    def cleanup_batch(self) -> int:
+        """Clean up any temporary resources after batch processing.
+
+        This method is called by the RayWorker after all operators in a stage
+        have processed the batch. Override this method in operators that need
+        to clean up temporary files (e.g., downloaded videos).
+
+        Returns:
+            Number of resources cleaned up (e.g., files deleted).
+        """
+        return 0
+
 
 class Refiner(Operator):
     """Refiner operators enrich records by adding new information (inplace)."""

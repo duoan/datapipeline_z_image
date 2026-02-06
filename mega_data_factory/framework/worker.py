@@ -121,6 +121,9 @@ class RayWorker:
             results = self.operator.process_batch(records)
             processed = [r for r in results if r is not None]
 
+        # Clean up temporary resources (e.g., downloaded video files)
+        self._cleanup_operators()
+
         # Update counters
         self.batch_count += 1
         self.record_count += len(records)
@@ -175,6 +178,9 @@ class RayWorker:
         processed = batch_result.passed
         rejected = batch_result.rejected
 
+        # Clean up temporary resources (e.g., downloaded video files)
+        self._cleanup_operators()
+
         # Update counters
         self.batch_count += 1
         self.record_count += len(records)
@@ -222,3 +228,35 @@ class RayWorker:
     def get_rejected_count(self) -> int:
         """Get total count of rejected records."""
         return self.rejected_count
+
+    def _cleanup_operators(self) -> int:
+        """Clean up temporary resources from all operators.
+
+        Calls cleanup_batch() on each operator to remove temporary files
+        (e.g., downloaded video files) after batch processing.
+
+        Returns:
+            Total number of resources cleaned up.
+        """
+        total_cleaned = 0
+
+        # Get list of operators to clean up
+        if hasattr(self.operator, "operators"):
+            # CombinedOperator - clean up individual operators
+            operators_to_clean = self.operator.operators
+        else:
+            # Single operator
+            operators_to_clean = [self.operator]
+
+        # Call cleanup_batch on each operator
+        for op in operators_to_clean:
+            try:
+                cleaned = op.cleanup_batch()
+                total_cleaned += cleaned
+            except Exception as e:
+                self.logger.warning(f"Failed to cleanup operator {op.__class__.__name__}: {e}")
+
+        if total_cleaned > 0:
+            self.logger.debug(f"Cleaned up {total_cleaned} temporary resources after batch")
+
+        return total_cleaned

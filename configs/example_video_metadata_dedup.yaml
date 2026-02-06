@@ -1,0 +1,57 @@
+# Data source
+data_loader:
+  type: HuggingFaceLoader
+  params:
+    dataset_name: "TIGER-Lab/VideoFeedback"
+    subset: "annotated"
+    split: "train"
+  num_workers: 2  # Number of parallel loader workers for distributed I/O
+  checkpoint_interval: 1000  # Checkpoint every 1000 records per worker
+
+# Processing stages
+stages:
+  # Stage 1: Basic metadata and extact dedup
+  - name: metadata_exact_dedup
+    operators:
+      - name: video_metadata_refiner
+        params:
+          video_url_field: "video link"
+          max_file_size: 1073741824  # 1GB limit
+          include_full_metadata: true
+      - name: video_exact_byte_level_deduplicator
+        params:
+          video_url_field: "video link"
+      - name: video_exact_stream_level_deduplicator
+        params:
+          video_url_field: "video link"
+    worker:
+      min_replicas: 2  # Can start with just 1 worker
+      max_replicas: 4  # Will use up to 4 if CPUs available
+      resources:
+        cpu: 1
+
+# Output
+data_writer:
+  type: ParquetDataWriter
+  params:
+    output_path: "./output/video_dedup/parquet_data"
+    table_name: "video_metadata"
+
+# Execution settings
+executor:
+  max_samples: 1000
+  batch_size: 10
+  dedup_num_buckets: 4
+
+  # Rejected samples collection (for deep dive analysis)
+  rejected_samples:
+    enabled: true
+    output_path: "./output/video_dedup/parquet_data_rejected"
+
+  # Metrics configuration
+  metrics:
+    enabled: true
+    output_path: "./output/video_dedup/metrics"
+    collect_custom_metrics: false
+    write_on_completion: true
+    generate_report: true  # Generate HTML report
