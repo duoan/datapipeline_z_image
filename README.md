@@ -138,6 +138,21 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 |----------|-------------|--------------|
 | [`ImagePhashDeduplicator`](mega_data_factory/operators/dedup/image_phash_dedup.md) | Perceptual hash deduplication | 🦀 Rust |
 
+### Video Operators
+
+**Refiners:**
+
+| Operator | Description | Requirements |
+|----------|-------------|--------------|
+| [`VideoMetadataRefiner`](mega_data_factory/operators/refiners/video_metadata.md) | Extract video metadata (duration, resolution, fps, codec, bitrate, audio info) | FFprobe |
+
+**Deduplicators:**
+
+| Operator | Description | Requirements |
+|----------|-------------|--------------|
+| [`VideoExactByteLevelDeduplicator`](mega_data_factory/operators/dedup/video_exact_byte_level_dedup.md) | Exact file hash deduplication (SHA-256/MD5/SHA-512) | - |
+| [`VideoExactStreamLevelDeduplicator`](mega_data_factory/operators/dedup/video_exact_stream_level_dedup.md) | Raw stream hash deduplication (container-agnostic) | FFmpeg |
+
 ### Data Writers
 
 | Writer | Description |
