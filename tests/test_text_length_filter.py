@@ -1,3 +1,4 @@
+import mega_data_factory.operators.filters.text_length_filter as length_module
 from mega_data_factory.operators.filters.text_length_filter import TextLengthFilter
 
 
@@ -69,3 +70,31 @@ def test_invalid_length_type_raises():
         assert False, "Expected ValueError"
     except ValueError as e:
         assert "length_type must be one of" in str(e)
+
+
+def test_text_length_python_and_rust_match_when_available():
+    f = TextLengthFilter(min_length=1, max_length=4, length_type="line")
+    records = [{"text": "a\nb"}, {"text": "a\nb\nc\nd\ne"}, {"text": ""}]
+
+    if length_module.RUST_TEXT_LENGTH_AVAILABLE and length_module._length_keep_batch_rust:
+        rust_result = f.should_keep_batch(records)
+        assert rust_result == [True, False, False]
+
+
+def test_text_length_word_with_punctuation_works():
+    f = TextLengthFilter(min_length=4, max_length=4, length_type="word", ignore_punctuation=False)
+    records = [{"text": "hello, world!"}]
+    assert f.should_keep_batch(records) == [True]
+
+
+def test_text_length_fallback_when_rust_unavailable(monkeypatch):
+    monkeypatch.setattr(length_module, "RUST_TEXT_LENGTH_AVAILABLE", False)
+    monkeypatch.setattr(length_module, "_length_keep_batch_rust", None)
+
+    f = TextLengthFilter(min_length=2, max_length=2, length_type="word", ignore_punctuation=True)
+    records = [{"text": "one two"}, {"text": "one two three"}]
+    try:
+        f.should_keep_batch(records)
+        assert False, "Expected RuntimeError when Rust backend is unavailable"
+    except RuntimeError as e:
+        assert "requires Rust backend" in str(e)

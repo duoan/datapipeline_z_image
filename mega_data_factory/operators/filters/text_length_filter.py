@@ -4,7 +4,6 @@ Text Length Filter
 Filters records based on text length criteria.
 """
 
-import unicodedata
 from typing import Any
 
 from mega_data_factory.framework import Filter
@@ -12,6 +11,19 @@ from mega_data_factory.framework import Filter
 FIELD_TEXT_LENGTH = "text_length"
 FIELD_TEXT = "text"
 SUPPORTED_LENGTH_TYPES = {"char", "word", "sentence", "line", "paragraph"}
+
+# Try to load Rust backend (optional acceleration)
+RUST_TEXT_LENGTH_AVAILABLE = False
+_length_keep_batch_rust = None
+
+try:
+    from mega_data_factory import rust_operators as _rust_module  # type: ignore
+
+    _length_keep_batch_rust = getattr(_rust_module, "text_length_keep_batch", None)
+    if _length_keep_batch_rust is not None:
+        RUST_TEXT_LENGTH_AVAILABLE = True
+except ImportError:
+    pass
 
 
 class TextLengthFilter(Filter):
@@ -75,64 +87,55 @@ class TextLengthFilter(Filter):
             return text
         return str(text)
 
-    def _count_words(self, text: str) -> int:
-        count = 0
-        in_word = False
-        for ch in text:
-            if ch.isalnum():
-                if not in_word:
-                    count += 1
-                    in_word = True
-            elif not self.ignore_punctuation and unicodedata.category(ch).startswith("P"):
-                count += 1
-                in_word = False
-            else:
-                in_word = False
-        return count
-
-    def _count_sentences(self, text: str) -> int:
-        if not text.strip():
-            return 0
-        return max(1, sum(1 for ch in text if ch in ".!?"))
-
-    def _count_paragraphs(self, text: str) -> int:
-        if not text.strip():
-            return 0
-        return max(1, sum(1 for p in text.split("\n\n") if p.strip()))
-
-    def _calculate_length(self, text: str) -> int:
-        if self.length_type == "word":
-            return self._count_words(text)
-        if self.length_type == "sentence":
-            return self._count_sentences(text)
-        if self.length_type == "line":
-            return len(text.splitlines())
-        if self.length_type == "paragraph":
-            return self._count_paragraphs(text)
-
-        # char mode
-        if self.ignore_punctuation:
-            return sum(1 for ch in text if ch.isalnum())
-        return len(text)
-
-    def _get_length(self, record: dict[str, Any]) -> int:
-        """Get record length based on configured length type."""
-        if self.length_type == "char" and not self.ignore_punctuation and self.text_length_field in record:
-            length = record[self.text_length_field]
-            if isinstance(length, (int, float)):
-                return int(length)
-
-        return self._calculate_length(self._get_text(record))
+    def _keep_by_length(self, length: int) -> bool:
+        keep = length >= self.min_length
+        if self.max_length is not None:
+            keep = keep and length <= self.max_length
+        return keep
 
     def should_keep_batch(self, records: list[dict[str, Any]]) -> list[bool]:
         """Determine which records meet text length criteria."""
-        results = []
-        for record in records:
-            length = self._get_length(record)
+        if not records:
+            return []
 
-            keep = length >= self.min_length
-            if self.max_length is not None:
-                keep = keep and length <= self.max_length
+        if not (RUST_TEXT_LENGTH_AVAILABLE and _length_keep_batch_rust):
+            raise RuntimeError("TextLengthFilter requires Rust backend: mega_data_factory.rust_operators.text_length_keep_batch")
 
-            results.append(keep)
-        return results
+        # Keep O(1) pre-computed char-length optimization in Python for compatibility.
+        if self.length_type == "char" and not self.ignore_punctuation:
+            results: list[bool | None] = [None] * len(records)
+            rust_texts: list[str] = []
+            rust_indices: list[int] = []
+
+            for idx, record in enumerate(records):
+                if self.text_length_field in record and isinstance(record[self.text_length_field], (int, float)):
+                    results[idx] = self._keep_by_length(int(record[self.text_length_field]))
+                else:
+                    rust_indices.append(idx)
+                    rust_texts.append(self._get_text(record))
+
+            if rust_texts:
+                rust_results = list(
+                    _length_keep_batch_rust(
+                        rust_texts,
+                        self.min_length,
+                        self.max_length,
+                        self.length_type,
+                        self.ignore_punctuation,
+                    )
+                )
+                for idx, keep in zip(rust_indices, rust_results, strict=False):
+                    results[idx] = bool(keep)
+
+            return [bool(v) for v in results]
+
+        texts = [self._get_text(record) for record in records]
+        return list(
+            _length_keep_batch_rust(
+                texts,
+                self.min_length,
+                self.max_length,
+                self.length_type,
+                self.ignore_punctuation,
+            )
+        )
