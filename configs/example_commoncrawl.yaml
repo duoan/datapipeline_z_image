@@ -18,6 +18,30 @@ stages:
           max_length: 100000
           text_field: "text"
           length_type: "word"
+      - name: text_alphabetic_word_ration_filter
+        params:
+          text_field: "text"
+          max_ratio: 0.2
+      - name: text_avg_word_length_filter
+        params:
+          text_field: "text"
+          lower_bound: 3.0
+          upper_bound: 10.0
+      - name: text_bullet_filter
+        params:
+          text_field: "text"
+          max_bullet_ratio: 0.9
+      - name: text_ellipsis_line_ratio_filter
+        params:
+          text_field: "text"
+          max_ratio: 0.3
+      - name: text_symbol_ratio_filter
+        params:
+          text_field: "text"
+          max_symbol_to_word_ratio: 0.5
+      - name: text_repetition_filter
+        params:
+          text_field: "text"
       - name: text_new_line_removal_refiner
         params:
           text_field: "text"

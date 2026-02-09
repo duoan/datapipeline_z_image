@@ -104,6 +104,12 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 |----------|-------------|-----------|
 | [`URLFilter`](mega_data_factory/operators/filters/url_filter.md) | Domain blocklist, URL word scoring, quality source exclusion | RefinedWeb §G.1 |
 | [`TextLengthFilter`](mega_data_factory/operators/filters/text_length_filter.md) | Filter by character/word count | FineWeb, RefinedWeb |
+| `TextAlphabeticWordRationFilter` (`text_alphabetic_word_ration_filter`) | Filter by ratio of words without alphabetic chars | Gopher-style heuristic |
+| `TextAvgWordLengthFilter` (`text_avg_word_length_filter`) | Filter by average word length range | RefinedWeb-style heuristic |
+| `TextBulletFilter` (`text_bullet_filter`) | Filter by bullet-line ratio | RefinedWeb-style heuristic |
+| `TextEllipsisLineRatioFilter` (`text_ellipsis_line_ratio_filter`) | Filter by ellipsis-ending line ratio | RefinedWeb-style heuristic |
+| `TextSymbolRatioFilter` (`text_symbol_ratio_filter`) | Filter by symbol-to-word ratio (`#`, `...`, `. . .`, `…`) | RefinedWeb-style heuristic |
+| `TextRepetitionFilter` (`text_repetition_filter`) | Multi-granularity n-gram repetition checks (line/paragraph/word) | Gopher / MassiveText heuristic |
 
 **Deduplicators:**
 
@@ -114,7 +120,6 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 **Coming Soon:**
 - `LanguageFilter` - fastText language detection
 - `PerplexityFilter` - KenLM perplexity scoring
-- `RepetitionFilter` - n-gram repetition detection
 - `QualityClassifierFilter` - Model-based quality (FineWeb-Edu style)
 - `MinHashDeduplicator` - Near-duplicate detection
 
@@ -320,7 +325,7 @@ data_loader:
   type: CommonCrawlLoader
   params:
     crawl_id: "CC-MAIN-2024-51"
-  num_workers: 16  # Distributed WARC loading
+  num_workers: 1
 
 stages:
   - name: content_filtering
@@ -329,21 +334,50 @@ stages:
       - name: url_filter
         params:
           url_field: "url"
-          score_threshold: 0.5
-          exclude_quality_sources: true  # Exclude Wikipedia, arXiv, etc.
       # Length filtering
       - name: text_length_filter
         params:
-          min_length: 100
+          min_length: 50
           max_length: 100000
           text_field: "text"
-      # Exact deduplication (RefinedWeb §G.3)
+          length_type: "word"
+      # Additional text quality filters
+      - name: text_alphabetic_word_ration_filter
+        params:
+          text_field: "text"
+          max_ratio: 0.8
+      - name: text_avg_word_length_filter
+        params:
+          text_field: "text"
+          lower_bound: 2.0
+          upper_bound: 20.0
+      - name: text_bullet_filter
+        params:
+          text_field: "text"
+          max_bullet_ratio: 0.9
+      - name: text_ellipsis_line_ratio_filter
+        params:
+          text_field: "text"
+          max_ratio: 0.3
+      - name: text_symbol_ratio_filter
+        params:
+          text_field: "text"
+          max_symbol_to_word_ratio: 0.5
+      - name: text_repetition_filter
+        params:
+          text_field: "text"
+      # Normalize newlines before dedup
+      - name: text_new_line_removal_refiner
+        params:
+          text_field: "text"
+          max_consecutive: 2
+      # Exact deduplication
       - name: text_exact_deduplicator
         params:
-          include_url: true  # URL+content dedup
+          text_field: "text"
     worker:
       min_replicas: 2
-      max_replicas: 8
+      max_replicas: 2
 
 data_writer:
   type: ParquetDataWriter
@@ -351,11 +385,15 @@ data_writer:
     output_path: "./output/commoncrawl"
 
 executor:
-  max_samples: 1000000
-  batch_size: 1000
+  max_samples: 10000
+  batch_size: 200
+  dedup_num_buckets: 1
+  rejected_samples:
+    enabled: true
   metrics:
     enabled: true
     generate_report: true
+    debug_samples_per_operator: 20
 ```
 
 ### Image Pipeline: Z-Image Style
