@@ -17,6 +17,7 @@ stages:
           min_length: 50
           max_length: 100000
           text_field: "text"
+          length_type: "word"
       - name: text_new_line_removal_refiner
         params:
           text_field: "text"

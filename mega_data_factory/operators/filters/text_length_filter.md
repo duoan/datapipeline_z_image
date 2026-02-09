@@ -1,6 +1,6 @@
 # TextLengthFilter
 
-Filter records based on text length criteria.
+Filter records based on text length criteria across multiple modes.
 
 ## Overview
 
@@ -12,28 +12,36 @@ Used in pipelines like [FineWeb](https://huggingface.co/spaces/HuggingFaceFW/blo
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `min_length` | `int` | `0` | Minimum text length (inclusive, in characters) |
-| `max_length` | `int \| None` | `None` | Maximum text length (inclusive). `None` means no upper limit |
+| `min_length` | `int` | `0` | Minimum length (inclusive). Backward-compatible with char mode |
+| `max_length` | `int \| None` | `None` | Maximum length (inclusive). `None` means no upper limit |
+| `lower_bound` | `int \| None` | `None` | Alias for `min_length` (takes precedence when set) |
+| `upper_bound` | `int \| None` | `None` | Alias for `max_length` (takes precedence when set) |
 | `text_field` | `str` | `"text"` | Name of the text field to measure |
-| `text_length_field` | `str` | `"text_length"` | Name of pre-computed length field (if available) |
+| `text_length_field` | `str` | `"text_length"` | Name of pre-computed length field (used in `char` mode) |
+| `length_type` | `str` | `"char"` | One of: `char`, `word`, `sentence`, `line`, `paragraph` |
+| `ignore_punctuation` | `bool` | `false` | For `char`/`word`: whether punctuation is excluded |
 
 ## Filtering Logic
 
 A record is **kept** if:
+
 ```
-min_length <= text_length <= max_length
+lower_bound <= length(text, length_type) <= upper_bound
 ```
 
-If `max_length` is `None`, only the minimum is checked.
+If no upper bound is set, only the lower bound is checked.
 
 ## Length Calculation
 
-The filter intelligently determines text length:
+Length depends on `length_type`:
 
-1. **Pre-computed field**: If `text_length_field` exists in the record, uses it directly (O(1))
-2. **Calculate from text**: Otherwise, computes `len(text)` on the fly
+1. `char`: character count (or alphanumeric-only when `ignore_punctuation=true`)
+2. `word`: word count (punctuation can be counted as separate tokens when `ignore_punctuation=false`)
+3. `sentence`: count of `.`, `!`, `?` (minimum 1 for non-empty text)
+4. `line`: number of lines
+5. `paragraph`: non-empty blocks split by double newlines (minimum 1 for non-empty text)
 
-This optimization works well with loaders that provide `text_length` (like `CommonCrawlLoader`).
+Optimization: in `char` mode, if `ignore_punctuation=false` and `text_length_field` exists, it is used directly (O(1)).
 
 ## Usage
 
@@ -47,6 +55,28 @@ stages:
         params:
           min_length: 100
           max_length: 100000
+          length_type: "char"
+```
+
+### Word Count Filtering
+
+```yaml
+- name: text_length_filter
+  params:
+    length_type: "word"
+    lower_bound: 50
+    upper_bound: 50000
+    ignore_punctuation: true
+```
+
+### Sentence Count Filtering
+
+```yaml
+- name: text_length_filter
+  params:
+    length_type: "sentence"
+    lower_bound: 3
+    upper_bound: 500
 ```
 
 ### Minimum Only (No Upper Limit)
