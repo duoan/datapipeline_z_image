@@ -92,6 +92,12 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 
 ### Text Operators
 
+**Refiners** (normalize/enrich text fields):
+
+| Operator | Description |
+|----------|-------------|
+| [`TextNewLineRemovalRefiner`](mega_data_factory/operators/refiners/text_new_line_removal_refiner.md) | Limit maximum consecutive newlines in text |
+
 **Filters** (rule-based, from [RefinedWeb](https://arxiv.org/pdf/2306.01116)):
 
 | Operator | Description | Reference |
@@ -503,7 +509,7 @@ mega-data-factory/
 │   │   ├── huggingface_loader.py       # HuggingFace datasets
 │   │   └── commoncrawl_loader.py       # CommonCrawl WARC files
 │   ├── operators/
-│   │   ├── refiners/                   # Image refiners (metadata, quality, embeddings)
+│   │   ├── refiners/                   # Refiners (text, image, video)
 │   │   ├── filters/                    # Text + Image filters
 │   │   └── dedup/                      # Deduplicators (phash, minhash)
 │   ├── writers/

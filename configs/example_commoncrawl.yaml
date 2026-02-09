@@ -14,9 +14,13 @@ stages:
           url_field: "url"
       - name: text_length_filter
         params:
-          min_length: 100
+          min_length: 50
           max_length: 100000
           text_field: "text"
+      - name: text_new_line_removal_refiner
+        params:
+          text_field: "text"
+          max_consecutive: 2
       - name: text_exact_deduplicator
         params:
           text_field: "text"

@@ -2,6 +2,11 @@
 
 from mega_data_factory.framework import OperatorRegistry
 
+from .text_new_line_removal_refiner import TextNewLineRemovalRefiner
+
+# Register text-only refiners (no heavy dependencies)
+OperatorRegistry.register("TextNewLineRemovalRefiner", TextNewLineRemovalRefiner)
+
 
 def _register_image_refiners():
     """Lazy register image refiners that depend on PIL/torch."""
@@ -40,4 +45,4 @@ except ImportError:
     pass
 
 
-__all__ = []
+__all__ = ["TextNewLineRemovalRefiner"]
