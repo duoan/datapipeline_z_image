@@ -6,7 +6,7 @@ Filter records based on text length criteria across multiple modes.
 
 A simple but essential filter for text pipelines. Filters out documents that are too short (likely low quality) or too long (potential data quality issues or duplicates).
 
-Used in pipelines like [FineWeb](https://huggingface.co/spaces/HuggingFaceFW/blogpost-fineweb-v1) and [RefinedWeb](https://arxiv.org/pdf/2306.01116).
+Used in pipelines like [FineWeb](https://huggingface.co/spaces/HuggingFaceFW/blogpost-fineweb-v1) and [RefinedWeb](https://arxiv.org/pdf/2306.01116), [Olmo3 PageLenFilter](https://github.com/allenai/datamap-rs/blob/main/src/map_fxn.rs).
 
 ## Parameters
 
@@ -19,7 +19,7 @@ Used in pipelines like [FineWeb](https://huggingface.co/spaces/HuggingFaceFW/blo
 | `text_field` | `str` | `"text"` | Name of the text field to measure |
 | `text_length_field` | `str` | `"text_length"` | Name of pre-computed length field (used in `char` mode) |
 | `length_type` | `str` | `"char"` | One of: `char`, `word`, `sentence`, `line`, `paragraph` |
-| `ignore_punctuation` | `bool` | `false` | For `char`/`word`: whether punctuation is excluded |
+| `ignore_punctuation` | `bool` | `true` | For `char`/`word`: whether punctuation is excluded |
 
 ## Filtering Logic
 
@@ -41,7 +41,7 @@ Length depends on `length_type`:
 4. `line`: number of lines
 5. `paragraph`: non-empty blocks split by double newlines (minimum 1 for non-empty text)
 
-Optimization: in `char` mode, if `ignore_punctuation=false` and `text_length_field` exists, it is used directly (O(1)).
+Optimization: in `char` mode, if `text_length_field` exists, it is used directly (O(1)).
 
 ## Usage
 
