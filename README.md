@@ -104,12 +104,12 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 |----------|-------------|-----------|
 | [`URLFilter`](mega_data_factory/operators/filters/url_filter.md) | Domain blocklist, URL word scoring, quality source exclusion | RefinedWeb §G.1 |
 | [`TextLengthFilter`](mega_data_factory/operators/filters/text_length_filter.md) | Filter by character/word count | FineWeb, RefinedWeb |
-| `TextAlphabeticWordRationFilter` (`text_alphabetic_word_ration_filter`) | Filter by ratio of words without alphabetic chars | Gopher-style heuristic |
-| `TextAvgWordLengthFilter` (`text_avg_word_length_filter`) | Filter by average word length range | RefinedWeb-style heuristic |
-| `TextBulletFilter` (`text_bullet_filter`) | Filter by bullet-line ratio | RefinedWeb-style heuristic |
-| `TextEllipsisLineRatioFilter` (`text_ellipsis_line_ratio_filter`) | Filter by ellipsis-ending line ratio | RefinedWeb-style heuristic |
-| `TextSymbolRatioFilter` (`text_symbol_ratio_filter`) | Filter by symbol-to-word ratio (`#`, `...`, `. . .`, `…`) | RefinedWeb-style heuristic |
-| `TextRepetitionFilter` (`text_repetition_filter`) | Multi-granularity n-gram repetition checks (line/paragraph/word) | Gopher / MassiveText heuristic |
+| [`TextAlphabeticWordRationFilter`](mega_data_factory/operators/filters/text_alphabetic_word_ration_filter.md) (`text_alphabetic_word_ration_filter`) | Filter by ratio of words without alphabetic chars | Gopher-style heuristic |
+| [`TextAvgWordLengthFilter`](mega_data_factory/operators/filters/text_avg_word_length_filter.md) (`text_avg_word_length_filter`) | Filter by average word length range | RefinedWeb-style heuristic |
+| [`TextBulletFilter`](mega_data_factory/operators/filters/text_bullet_filter.md) (`text_bullet_filter`) | Filter by bullet-line ratio | RefinedWeb-style heuristic |
+| [`TextEllipsisLineRatioFilter`](mega_data_factory/operators/filters/text_ellipsis_line_ratio_filter.md) (`text_ellipsis_line_ratio_filter`) | Filter by ellipsis-ending line ratio | RefinedWeb-style heuristic |
+| [`TextSymbolRatioFilter`](mega_data_factory/operators/filters/text_symbol_ratio_filter.md) (`text_symbol_ratio_filter`) | Filter by symbol-to-word ratio (`#`, `...`, `. . .`, `…`) | RefinedWeb-style heuristic |
+| [`TextRepetitionFilter`](mega_data_factory/operators/filters/text_repetition_filter.md) (`text_repetition_filter`) | Multi-granularity n-gram repetition checks (line/paragraph/word) | Gopher / MassiveText heuristic |
 
 **Deduplicators:**
 
