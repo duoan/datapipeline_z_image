@@ -146,7 +146,7 @@ class VideoOperatorMixin:
         This method should be called after all operators in a stage have processed
         the batch. It removes temporary video files that were downloaded from URLs.
 
-        The RayWorker calls this method automatically after processing each batch.
+        The StageActor calls this method automatically after processing each batch.
 
         Returns:
             Number of files cleaned up.

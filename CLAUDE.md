@@ -36,7 +36,7 @@ pytest tests/test_metrics.py::TestMetricsCollector::test_initialization -v  # Si
 
 ### Pipeline Execution Flow
 
-1. **DataLoader** (distributed via `DataLoaderWorker` Ray actors) loads data in parallel shards
+1. **DataLoader** (distributed via `LoaderActor` Ray actors) loads data in parallel shards
 2. **Executor** orchestrates batch submission through stages using Ray ObjectRef chaining
 3. **Stages** contain operators that process batches (CPU or GPU workers)
 4. **DataWriter** writes processed records to Parquet/Iceberg
@@ -52,7 +52,9 @@ pytest tests/test_metrics.py::TestMetricsCollector::test_initialization -v  # Si
 - `Operator` - base class with automatic stats collection
 - `Refiner` - enriches records with new fields (inplace via `refine_batch`)
 - `Filter` - removes records based on conditions (`should_keep_batch` returns bool list)
-- `Deduplicator` - removes duplicates using shared `DedupBackend` (`get_dedup_keys_batch`)
+- `Deduplicator` - removes duplicates using shared `DedupBackend` (abstract base)
+  - `ExactDedupBackend` - exact key matching (set-based)
+  - `SemanticDedupBackend` - semantic similarity (vector-based, e.g., FAISS) - skeleton
 - `CombinedOperator` - chains multiple operators
 
 **Config-driven**: YAML config defines the entire pipeline. Operator names in config use snake_case (e.g., `image_metadata_refiner`) which converts to PascalCase class names (`ImageMetadataRefiner`).
@@ -62,7 +64,9 @@ pytest tests/test_metrics.py::TestMetricsCollector::test_initialization -v  # Si
 - **ObjectRef Chaining**: Batches flow through stages without blocking the driver
 - **Backpressure Control**: `max_in_flight` limits concurrent batches to prevent memory buildup
 - **Dynamic Workers**: Stages can specify `min_replicas`/`max_replicas` for elastic scaling
-- **Shared DedupBackend**: Ray actors provide distributed deduplication with bucketing
+- **DedupBackend**: Abstract base class for deduplication backends
+  - **ExactDedupBackend**: Exact key matching with distributed bucketing (Ray actors)
+  - **SemanticDedupBackend**: Semantic similarity deduplication (skeleton, needs FAISS/Milvus)
 
 ### Rust Acceleration
 
@@ -83,9 +87,9 @@ mega_data_factory/
 │   ├── executor.py        # Pipeline orchestration
 │   ├── config.py          # YAML config parsing (PipelineConfig)
 │   ├── registry.py        # Component registries
-│   ├── worker.py          # RayWorker actor
-│   ├── loader_worker.py   # DataLoaderWorker actor
-│   ├── backend.py         # DedupBackend (distributed dedup state)
+│   ├── stage_actor.py     # StageActor
+│   ├── loader_actor.py    # LoaderActor
+│   ├── dedup_backend.py   # DedupBackend (distributed dedup state)
 │   └── metrics/           # Metrics collection, aggregation, reporting
 ├── operators/
 │   ├── refiners/          # ImageMetadataRefiner, ImageClipEmbeddingRefiner, etc.

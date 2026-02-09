@@ -148,7 +148,7 @@ Stage 3:
 The Executor scans available files and distributes them to loader workers:
 
 ```python
-# Executor._create_loader_workers()
+# Executor._create_loader_actors()
 all_files = data_loader.get_file_list()  # e.g., 1000 WARC files
 files_per_worker = total_files // num_workers
 
@@ -160,11 +160,11 @@ files_per_worker = total_files // num_workers
 
 ### Streaming Batch Production
 
-Each `DataLoaderWorker` is a Ray Actor that streams batches:
+Each `LoaderActor` is a Ray Actor that streams batches:
 
 ```python
 @ray.remote
-class DataLoaderWorker:
+class LoaderActor:
     def __init__(self, assigned_files, shard_id, batch_size, ...):
         self.assigned_files = assigned_files  # Disjoint file set
         self._data_stream = None
@@ -204,7 +204,7 @@ GPU speed:    1,000 records/sec
 
 ```python
 # Executor._execute_distributed()
-max_in_flight = config.executor.max_in_flight or len(self.loader_workers)
+max_in_flight = config.executor.max_in_flight or len(self.loader_actors)
 
 while active_loaders or batch_pipeline:
     pipeline_has_capacity = len(batch_pipeline) < max_in_flight
@@ -247,7 +247,7 @@ class NaiveDedupBackend:
 Mega Data Factory shards deduplication state across multiple actors:
 
 ```python
-class DedupBackend:
+class ExactDedupBackend:
     """
     Performance guidelines:
     - Small datasets (<1B keys): 16-64 buckets
@@ -259,7 +259,7 @@ class DedupBackend:
     def __init__(self, num_buckets=16):
         # Create one actor per bucket
         self.bucket_actors = [
-            _DedupBackendBucketActor.remote(i)
+            _ExactDedupBucketActor.remote(i)
             for i in range(num_buckets)
         ]
 
@@ -290,7 +290,7 @@ class DedupBackend:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    DedupBackend (Coordinator)                   │
+│                    ExactDedupBackend (Coordinator)              │
 │  • Stateless - only routes requests                             │
 │  • hash(key) % num_buckets → bucket actor                       │
 └─────────────────────────────────────────────────────────────────┘
@@ -337,7 +337,7 @@ stages:
 # Executor creates workers up to max_replicas
 for replica_id in range(max_replicas):
     try:
-        worker = RayWorker.options(
+        actor = StageActor.options(
             num_cpus=stage_config.worker.resources.get("cpu", 1),
             num_gpus=stage_config.worker.resources.get("gpu", 0),
         ).remote(name, operators, writer)

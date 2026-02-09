@@ -12,6 +12,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -25,7 +27,6 @@ from mega_data_factory.operators.dedup.video_exact_stream_level_dedup import (
 from mega_data_factory.utils.video_utils import (
     VideoLoader,
     compute_file_hash,
-    compute_stream_hash,
     get_video_from_record,
 )
 
@@ -75,7 +76,7 @@ class TestVideoLoader:
         cache_dir = tempfile.mkdtemp()
         try:
             shutil.rmtree(cache_dir)  # Remove to test creation
-            loader = VideoLoader(cache_dir=cache_dir)
+            VideoLoader(cache_dir=cache_dir)
             assert Path(cache_dir).exists()
         finally:
             shutil.rmtree(cache_dir, ignore_errors=True)
@@ -228,14 +229,11 @@ class TestVideoDeduplicatorBase:
 
     def test_base_class_is_abstract(self):
         """Test that base class cannot be instantiated directly."""
-        try:
+        with pytest.raises(TypeError):
             # VideoDeduplicator is abstract, should not be instantiated
             dedup = VideoDeduplicator()
             # If we get here, try to call compute_hash which should fail
             dedup.compute_hash("/some/path")
-            assert False, "Should have raised an error"
-        except TypeError:
-            pass  # Expected - abstract class
 
     def test_get_existing_hash_fields_default(self):
         """Test default existing hash fields is empty."""

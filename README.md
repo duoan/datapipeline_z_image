@@ -492,9 +492,9 @@ mega-data-factory/
 │   ├── cli.py                          # CLI entry point (mdf command)
 │   ├── framework/
 │   │   ├── executor.py                 # Pipeline orchestration
-│   │   ├── worker.py                   # RayWorker actors
-│   │   ├── loader_worker.py            # DataLoaderWorker actors
-│   │   ├── backend.py                  # DedupBackend (distributed state)
+│   │   ├── stage_actor.py               # StageActor
+│   │   ├── loader_actor.py             # LoaderActor
+│   │   ├── dedup_backend.py            # DedupBackend (ABC), ExactDedupBackend, SemanticDedupBackend
 │   │   ├── operator.py                 # Operator, Refiner, Filter, Deduplicator
 │   │   ├── config.py                   # YAML config parsing
 │   │   ├── registry.py                 # Component registries

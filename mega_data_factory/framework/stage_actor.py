@@ -1,7 +1,7 @@
 """
-Worker: Executes operators on records
+Stage execution: Ray Actor that runs operators on batches.
 
-Provides RayWorker for executing operators in batch processing.
+Provides StageActor; naming uses Actor consistently (see LoaderActor, _DedupBackendBucketActor).
 """
 
 import logging
@@ -15,8 +15,8 @@ from .operator import CombinedOperator, Operator
 
 
 @dataclass
-class WorkerBatchResult:
-    """Result of processing a batch in a worker.
+class StageBatchResult:
+    """Result of processing one batch in a pipeline stage (StageActor).
 
     Attributes:
         passed: Records that passed through all operators
@@ -28,11 +28,11 @@ class WorkerBatchResult:
 
 
 @ray.remote
-class RayWorker:
-    """Ray Actor for distributed batch processing.
+class StageActor:
+    """Ray Actor that runs operators on batches for one pipeline stage.
 
-    Each RayWorker processes batches of records on a Ray node.
-    Workers are created as Ray Actors and process batches remotely.
+    Multiple actors per stage provide parallelism. Naming: Actor (not Worker)
+    for consistency with LoaderActor and _DedupBackendBucketActor.
     """
 
     def __init__(
@@ -43,10 +43,10 @@ class RayWorker:
         rejected_writer: DataWriter | None = None,
         collect_rejected: bool = False,
     ):
-        """Initialize Ray worker.
+        """Initialize stage actor.
 
         Args:
-            name: Worker name
+            name: Actor name (for logging / Ray Dashboard)
             operators: List of operators to run
             data_writer: Data writer for writing results locally (optional)
             rejected_writer: Data writer for writing rejected samples (optional)
@@ -59,7 +59,7 @@ class RayWorker:
         self.collect_rejected = collect_rejected
 
         # Set up logging (Ray logs appear in Ray Dashboard)
-        self.logger = logging.getLogger(f"RayWorker.{name}")
+        self.logger = logging.getLogger(f"StageActor.{name}")
         self.logger.setLevel(logging.INFO)
 
         # Initialize batch counters for progress tracking
@@ -145,7 +145,7 @@ class RayWorker:
 
         return processed if processed else None
 
-    def process_batch_with_rejected_records(self, records_or_ref, should_write: bool = False) -> WorkerBatchResult:
+    def process_batch_with_rejected_records(self, records_or_ref, should_write: bool = False) -> StageBatchResult:
         """Process a batch and return both passed and rejected records.
 
         This method explicitly returns rejected samples for collection by the executor.
@@ -156,7 +156,7 @@ class RayWorker:
             should_write: If True, write results to storage.
 
         Returns:
-            WorkerBatchResult containing passed and rejected records
+            StageBatchResult containing passed and rejected records
         """
         self.logger.info(f"process_batch_with_rejected_records called (should_write={should_write})")
 
@@ -171,7 +171,7 @@ class RayWorker:
         # Handle None/empty records
         if not records:
             self.logger.info("Empty records, returning empty result")
-            return WorkerBatchResult(passed=[], rejected=[])
+            return StageBatchResult(passed=[], rejected=[])
 
         # Process batch with rejected collection
         batch_result = self.operator.process_batch_with_rejected(records)
@@ -204,10 +204,10 @@ class RayWorker:
                 f"({self.processed_count}/{self.record_count}={100 * self.processed_count / max(1, self.record_count):.1f}% pass rate)"
             )
 
-        return WorkerBatchResult(passed=processed, rejected=rejected)
+        return StageBatchResult(passed=processed, rejected=rejected)
 
     def get_operator_stats(self) -> dict[str, Any]:
-        """Get performance statistics from all operators in this worker.
+        """Get performance statistics from all operators in this actor.
 
         Returns:
             Dictionary mapping operator class names to their statistics

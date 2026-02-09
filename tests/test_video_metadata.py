@@ -9,8 +9,7 @@ import os
 import shutil
 import subprocess
 import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pyarrow as pa
 import pytest
@@ -213,7 +212,7 @@ class TestExtractVideoMetadata:
         with open(invalid_path, "w") as f:
             f.write("not a video")
 
-        metadata = extract_video_metadata(invalid_path)
+        extract_video_metadata(invalid_path)
         # FFprobe may return None or partial metadata for invalid files
         # The important thing is it doesn't crash
 

@@ -838,7 +838,7 @@ class MetricsReporter:
         prev_source_idx = input_idx
         prev_source_value = stage_df.iloc[0]["input_records"]
 
-        for stage_idx, (_, stage_row) in enumerate(stage_df.iterrows()):
+        for _, stage_row in stage_df.iterrows():
             stage_name = stage_row["stage_name"]
             stage_output_idx = stage_node_map[stage_name]
 
@@ -876,28 +876,28 @@ class MetricsReporter:
             data=[
                 go.Sankey(
                     arrangement="snap",
-                    node=dict(
-                        pad=15,
-                        thickness=20,
-                        line=dict(color="white", width=2),
-                        label=node_labels,
-                        color=node_colors,
-                        x=node_x,
-                        y=node_y,
-                    ),
-                    link=dict(
-                        source=sources,
-                        target=targets,
-                        value=values,
-                        color=link_colors,
-                    ),
+                    node={
+                        "pad": 15,
+                        "thickness": 20,
+                        "line": {"color": "white", "width": 2},
+                        "label": node_labels,
+                        "color": node_colors,
+                        "x": node_x,
+                        "y": node_y,
+                    },
+                    link={
+                        "source": sources,
+                        "target": targets,
+                        "value": values,
+                        "color": link_colors,
+                    },
                 )
             ]
         )
 
         fig.update_layout(
             title="Data Flow Sankey Diagram - Stage Level with Filters",
-            font=dict(size=10),
+            font={"size": 10},
             height=700,
             template="plotly_white",
         )

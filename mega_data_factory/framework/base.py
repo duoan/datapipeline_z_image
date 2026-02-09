@@ -5,7 +5,6 @@ Provides abstract interfaces for DataLoader and DataWriter.
 """
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
 from typing import Any
 
 
@@ -16,6 +15,15 @@ class DataLoader(ABC):
     - get_file_list(max_samples, num_workers) -> list[str]: Scan and return data files
     - load_files(file_list, ...) -> Iterator: Load assigned files
     """
+
+    @abstractmethod
+    def load_files(
+        self,
+        file_list: list[str],
+        worker_id: int | None = None,
+        checkpoint: dict[str, Any] | None = None,
+    ):
+        """Load assigned files and yield records."""
 
     def create_checkpoint(self, shard_id: int, records_processed: int) -> dict[str, Any]:
         """Create checkpoint data for resume support.

@@ -7,8 +7,10 @@ All public APIs are exported from this module.
 
 # Config classes
 # Backend classes
-from .backend import (
-    DedupBackend,
+from .dedup_backend import (
+    DedupBackend,  # Abstract base class
+    ExactDedupBackend,
+    SemanticDedupBackend,
 )
 
 # Base classes
@@ -49,8 +51,8 @@ from .registry import (
     OperatorRegistry,
 )
 
-# Worker classes
-from .worker import RayWorker, WorkerBatchResult
+# Stage execution (Ray Actor + batch result)
+from .stage_actor import StageActor, StageBatchResult
 
 # Export all public APIs
 __all__ = [
@@ -71,7 +73,9 @@ __all__ = [
     "CombinedOperator",
     "BatchResult",
     # Backend
-    "DedupBackend",
+    "DedupBackend",  # Abstract base class
+    "ExactDedupBackend",
+    "SemanticDedupBackend",
     # Registry
     "OperatorRegistry",
     "DataLoaderRegistry",
@@ -79,9 +83,9 @@ __all__ = [
     # Base
     "DataLoader",
     "DataWriter",
-    # Worker
-    "RayWorker",
-    "WorkerBatchResult",
+    # Stage execution
+    "StageActor",
+    "StageBatchResult",
     # Executor
     "Executor",
 ]

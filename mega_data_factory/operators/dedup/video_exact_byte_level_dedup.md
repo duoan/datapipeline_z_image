@@ -124,7 +124,7 @@ VideoExactByteLevelDeduplicator (subclass)
 
 ## Batch Cleanup
 
-Downloaded video files are automatically cleaned up by the `RayWorker` after each batch is processed (after all operators in a stage have finished). This ensures:
+Downloaded video files are automatically cleaned up by the `StageActor` after each batch is processed (after all operators in a stage have finished). This ensures:
 
 1. Temporary files don't accumulate during processing
 2. All operators in a stage can access the downloaded files

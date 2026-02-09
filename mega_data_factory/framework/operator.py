@@ -11,7 +11,7 @@ from typing import Any
 
 import pyarrow as pa
 
-from .backend import DedupBackend
+from .dedup_backend import DedupBackend
 
 
 @dataclass
@@ -205,7 +205,7 @@ class Operator(ABC):
     def cleanup_batch(self) -> int:
         """Clean up any temporary resources after batch processing.
 
-        This method is called by the RayWorker after all operators in a stage
+        This method is called by the StageActor after all operators in a stage
         have processed the batch. Override this method in operators that need
         to clean up temporary files (e.g., downloaded videos).
 
@@ -293,15 +293,15 @@ class Deduplicator(Operator):
     and a custom bucket_id_getter can extract it for routing.
     """
 
-    def __init__(self, backend: DedupBackend | None = None, representative_id_field: str = "id"):
+    def __init__(self, dedup_backend: DedupBackend | None = None, representative_id_field: str = "id"):
         """Initialize deduplication operator.
 
         Args:
-            backend: Deduplication backend (should be provided by Executor, can be None initially)
+            dedup_backend: Shared deduplication state (injected by Executor; can be None initially).
             representative_id_field: Field name to use as representative sample identifier (default: "id")
         """
         super().__init__()
-        self.backend = backend
+        self.dedup_backend = dedup_backend
         self.representative_id_field = representative_id_field
 
     @abstractmethod
@@ -318,12 +318,12 @@ class Deduplicator(Operator):
         return [str(record.get(self.representative_id_field, "")) for record in records]
 
     def _process_batch_impl(self, records: list[dict[str, Any]]) -> list[dict[str, Any] | None]:
-        if self.backend is None:
-            raise RuntimeError("Deduplicator backend not set.")
+        if self.dedup_backend is None:
+            raise RuntimeError("Deduplicator dedup_backend not set.")
         if not records:
             return []
         keys = self.get_dedup_keys_batch(records)
-        is_new = self.backend.batch_mark_seen(keys)
+        is_new = self.dedup_backend.batch_mark_seen(keys)
         return [record if new else None for record, new in zip(records, is_new, strict=False)]
 
     def _process_batch_with_rejected_impl(self, records: list[dict[str, Any]]) -> BatchResult:
@@ -332,18 +332,18 @@ class Deduplicator(Operator):
         Rejected samples are annotated with dedup key, representative sample ID, and rejection metadata.
         All rejection details are stored in a single _rejection_details JSON field for extensibility.
         """
-        if self.backend is None:
-            raise RuntimeError("Deduplicator backend not set.")
+        if self.dedup_backend is None:
+            raise RuntimeError("Deduplicator dedup_backend not set.")
         if not records:
             return BatchResult(passed=[], rejected=[])
 
         keys = self.get_dedup_keys_batch(records)
         representative_ids = self.get_representative_ids_batch(records)
 
-        # Check if backend supports tracking representative IDs
-        if self.backend.track_representative:
+        # Check if dedup_backend supports tracking representative IDs
+        if self.dedup_backend.track_representative:
             # Use the new method that returns representative IDs for duplicates
-            results = self.backend.batch_mark_seen_with_ids(keys, representative_ids)
+            results = self.dedup_backend.batch_mark_seen_with_ids(keys, representative_ids)
 
             passed = []
             rejected = []
@@ -365,7 +365,7 @@ class Deduplicator(Operator):
                     rejected.append(rejected_record)
         else:
             # Fallback to simple method without representative tracking
-            is_new_list = self.backend.batch_mark_seen(keys)
+            is_new_list = self.dedup_backend.batch_mark_seen(keys)
 
             passed = []
             rejected = []
@@ -390,8 +390,8 @@ class Deduplicator(Operator):
 
     def reset(self):
         """Reset deduplication state."""
-        if self.backend is not None:
-            self.backend.reset()
+        if self.dedup_backend is not None:
+            self.dedup_backend.reset()
 
 
 class CombinedOperator(Operator):

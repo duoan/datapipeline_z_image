@@ -1,8 +1,8 @@
 """
-DataLoaderWorker: Ray Actor for distributed data loading
+Loader: Ray Actor for distributed data loading.
 
-Enables parallel data loading across multiple workers, with each worker
-loading a shard of the dataset and producing batches.
+Provides LoaderActor for parallel sharded loading; naming uses Actor
+consistently (StageActor, _DedupBackendBucketActor).
 """
 
 import time
@@ -14,11 +14,10 @@ from .base import DataLoader
 
 
 @ray.remote
-class DataLoaderWorker:
-    """Ray Actor for distributed data loading.
+class LoaderActor:
+    """Ray Actor that loads a shard of the dataset and produces batches.
 
-    Each worker loads a disjoint shard of the dataset and produces batches
-    for downstream processing stages.
+    Each actor owns a disjoint set of files; multiple actors run in parallel.
     """
 
     def __init__(
@@ -32,15 +31,15 @@ class DataLoaderWorker:
         max_records: int | None = None,
         **kwargs,  # Accept extra args for compatibility
     ):
-        """Initialize data loader worker.
+        """Initialize loader actor.
 
         Args:
             data_loader: DataLoader instance
-            shard_id: This worker's shard ID (0 to num_shards-1)
+            shard_id: This actor's shard ID (0 to num_shards-1)
             num_shards: Total number of shards
             batch_size: Number of records per batch
             checkpoint_interval: Save checkpoint every N records
-            assigned_files: List of files assigned to this worker
+            assigned_files: List of files assigned to this actor
             max_records: Maximum records to load (None = unlimited)
         """
         self.data_loader = data_loader
@@ -69,7 +68,7 @@ class DataLoaderWorker:
 
     def _initialize_stream(self):
         """Initialize the data stream iterator."""
-        print(f"[DataLoaderWorker {self.shard_id}] Initializing data stream")
+        print(f"[LoaderActor {self.shard_id}] Initializing data stream")
 
         if not hasattr(self.data_loader, "load_files"):
             raise ValueError(f"Loader {type(self.data_loader).__name__} does not support load_files()")
@@ -239,7 +238,7 @@ class DataLoaderWorker:
             shard_id=self.shard_id,
             records_processed=self.records_processed,
         )
-        print(f"[DataLoaderWorker {self.shard_id}] Checkpoint: {self.records_processed} records")
+        print(f"[LoaderActor {self.shard_id}] Checkpoint: {self.records_processed} records")
 
     def get_checkpoint(self) -> dict[str, Any]:
         """Get current checkpoint data."""
@@ -249,10 +248,10 @@ class DataLoaderWorker:
         """Restore from checkpoint."""
         self.checkpoint = checkpoint
         self.records_processed = checkpoint.get("records_processed", 0)
-        print(f"[DataLoaderWorker {self.shard_id}] Restored checkpoint: {self.records_processed} records")
+        print(f"[LoaderActor {self.shard_id}] Restored checkpoint: {self.records_processed} records")
 
     def get_stats(self) -> dict[str, Any]:
-        """Get worker statistics including throughput."""
+        """Get actor statistics including throughput."""
         total_time = 0.0
         if self.start_time is not None:
             end = self.end_time if self.end_time else time.time()

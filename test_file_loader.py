@@ -46,7 +46,7 @@ print(f"✅ Total assigned: {total_assigned} files (should be {total_files})")
 
 # Show approximate data size per worker
 avg_file_size_gb = 9.5  # From earlier inspection
-print(f"\n📊 Approximate data per worker:")
+print("\n📊 Approximate data per worker:")
 for worker_id in range(num_workers):
     num_files = files_per_worker + 1 if worker_id < remainder else files_per_worker
     data_gb = num_files * avg_file_size_gb

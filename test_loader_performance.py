@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Test DataLoaderWorker performance."""
+"""Test LoaderActor performance."""
 
 import time
-from mega_data_factory.loaders import HuggingFaceLoader
-from mega_data_factory.framework.loader_worker import DataLoaderWorker
+
 import ray
+
+from mega_data_factory.framework.loader_actor import LoaderActor
+from mega_data_factory.loaders import HuggingFaceLoader
 
 ray.init(ignore_reinit_error=True)
 
@@ -14,8 +16,8 @@ loader = HuggingFaceLoader(
     streaming=True,
 )
 
-print("Creating DataLoaderWorker...")
-worker = DataLoaderWorker.remote(
+print("Creating LoaderActor...")
+worker = LoaderActor.remote(
     data_loader=loader,
     shard_id=0,
     num_shards=4,

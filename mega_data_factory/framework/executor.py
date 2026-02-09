@@ -1,7 +1,7 @@
 """
-Executor: Coordinates workers and manages pipeline execution
+Executor: Creates actors (loader + stage) and runs the pipeline.
 
-Provides Executor for orchestrating the entire data processing pipeline.
+Orchestrates LoaderActor and StageActor actors and injects shared DedupBackend.
 """
 
 from collections.abc import Iterator
@@ -9,16 +9,16 @@ from typing import Any
 
 import ray
 
-from .backend import DedupBackend
 from .config import PipelineConfig
+from .dedup_backend import ExactDedupBackend
 from .metrics import MetricsAggregator, MetricsCollector, MetricsWriter
 from .operator import Deduplicator
 from .registry import DataLoaderRegistry, DataWriterRegistry, OperatorRegistry
-from .worker import RayWorker
+from .stage_actor import StageActor
 
 
 class Executor:
-    """Executor coordinates workers and manages pipeline execution."""
+    """Executor creates actors (loader + stage) and runs the pipeline."""
 
     def __init__(self, config: PipelineConfig):
         """Initialize executor from configuration.
@@ -85,9 +85,8 @@ class Executor:
                 # Enable representative tracking when collecting rejected samples
                 # This allows us to record which sample was the "first seen" for each dedup key
                 track_representative = self.collect_rejected
-                shared_dedup_backend = DedupBackend(
+                shared_dedup_backend = ExactDedupBackend(
                     num_buckets=num_buckets,
-                    name_prefix="pipeline_dedup_backend",
                     track_representative=track_representative,
                 )
                 # Reset backend state at start of each run to clear previous data
@@ -129,13 +128,12 @@ class Executor:
             f"batch_size={config.executor.batch_size}"
         )
 
-        # Create DataLoaderWorker actors
-        self.loader_workers: list[Any] = []
-        self._create_loader_workers(config)
+        # Create loader actors (one per shard)
+        self.loader_actors: list[Any] = []
+        self._create_loader_actors(config)
 
-        # Create stages (Ray Actors)
-        # Store workers grouped by stage (each stage has multiple replicas)
-        self.stages: list[list[Any]] = []  # List of stage groups
+        # Create stage actors: each stage has multiple replicas
+        self.stages: list[list[Any]] = []  # List of stage groups (each group = list of StageActors)
         self.stage_indices: list[int] = []  # Round-robin indices per stage for load balancing
 
         # All stages write to the same Iceberg table
@@ -151,9 +149,9 @@ class Executor:
                     class_name = op_config.get_class_name()
                     op_instance = OperatorRegistry.create(class_name, op_config.params)
 
-                    # If this is a Deduplicator operator and we have a shared backend, use it
+                    # Inject shared dedup state so deduplicators can mark seen keys
                     if isinstance(op_instance, Deduplicator) and shared_dedup_backend is not None:
-                        op_instance.backend = shared_dedup_backend
+                        op_instance.dedup_backend = shared_dedup_backend
 
                     stage_operators.append(op_instance)
 
@@ -163,8 +161,8 @@ class Executor:
 
             print(f"  Creating workers for stage '{stage_config.name}': min={min_replicas}, max={max_replicas}")
 
-            # Try to create up to max_replicas workers
-            stage_workers = []  # Successfully created workers
+            # Try to create up to max_replicas actors
+            stage_actors: list[Any] = []
             failed_count = 0
 
             for replica_id in range(max_replicas):
@@ -192,8 +190,8 @@ class Executor:
 
                     # Create Ray Actor worker with name for Ray Dashboard visibility
                     # Ray Actor names must be unique
-                    actor_name = f"pipeline_{worker_name}"
-                    worker = RayWorker.options(
+                    actor_name = f"stage_actor_{worker_name}"
+                    actor = StageActor.options(
                         name=actor_name,
                         num_cpus=num_cpus,
                         num_gpus=num_gpus,
@@ -206,45 +204,43 @@ class Executor:
                         collect_rejected=self.collect_rejected,
                     )
 
-                    stage_workers.append(worker)
+                    stage_actors.append(actor)
 
                 except Exception as e:
                     failed_count += 1
                     print(f"    ⚠️  Failed to create worker {replica_id}: {e}")
                     # Stop if we can't reach min_replicas even if we create all remaining workers
-                    if (len(stage_workers) + (max_replicas - replica_id - 1)) < min_replicas:
+                    if (len(stage_actors) + (max_replicas - replica_id - 1)) < min_replicas:
                         raise RuntimeError(
                             f"Cannot reach min_replicas={min_replicas} for stage '{stage_config.name}': "
-                            f"only {len(stage_workers)} created, {failed_count} failed"
-                        )
+                            f"only {len(stage_actors)} created, {failed_count} failed"
+                        ) from e
 
-            # Check we have at least min_replicas
-            actual_workers = len(stage_workers)
-            if actual_workers < min_replicas:
+            actual = len(stage_actors)
+            if actual < min_replicas:
                 raise RuntimeError(
-                    f"Failed to create minimum workers for stage '{stage_config.name}': "
-                    f"created {actual_workers}, required {min_replicas}"
+                    f"Failed to create minimum actors for stage '{stage_config.name}': "
+                    f"created {actual}, required {min_replicas}"
                 )
 
             if failed_count > 0:
-                print(f"    ⚠️  {failed_count} workers failed to create, using {actual_workers}/{max_replicas} workers")
-            print(f"    ✅ {actual_workers}/{max_replicas} workers created for stage '{stage_config.name}'")
+                print(f"    ⚠️  {failed_count} actors failed, using {actual}/{max_replicas}")
+            print(f"    ✅ {actual}/{max_replicas} actors for stage '{stage_config.name}'")
 
-            # Add all ready workers for this stage as a group
-            self.stages.append(stage_workers)
+            self.stages.append(stage_actors)
             self.stage_indices.append(0)
 
-    def _create_loader_workers(self, config: PipelineConfig):
-        """Create DataLoaderWorker actors for distributed data loading.
+    def _create_loader_actors(self, config: PipelineConfig):
+        """Create LoaderActor actors for distributed data loading.
 
         Two-layer architecture:
-        1. Executor (here): Scan files and assign to workers
-        2. Workers: Read assigned files
+        1. Executor (here): Scan files and assign to actors
+        2. LoaderActor: Read assigned files
 
         Args:
             config: Pipeline configuration
         """
-        from .loader_worker import DataLoaderWorker
+        from .loader_actor import LoaderActor
 
         num_workers = config.data_loader.num_workers
         batch_size = config.executor.batch_size
@@ -259,7 +255,7 @@ class Executor:
                 f"~{max_records_per_worker} per worker ({num_workers} workers)"
             )
 
-        print(f"Creating {num_workers} DataLoaderWorker actors...")
+        print(f"Creating {num_workers} LoaderActor actors...")
 
         # Layer 1: Executor scans files if loader supports it
         assigned_files_per_worker = None
@@ -293,8 +289,8 @@ class Executor:
         for shard_id in range(num_workers):
             assigned_files = assigned_files_per_worker[shard_id] if assigned_files_per_worker else None
 
-            worker = DataLoaderWorker.options(
-                name=f"pipeline_loader_{shard_id}",
+            actor = LoaderActor.options(
+                name=f"loader_actor_{shard_id}",
                 num_cpus=1,  # Each loader uses 1 CPU
             ).remote(
                 data_loader=self.data_loader,
@@ -305,9 +301,9 @@ class Executor:
                 assigned_files=assigned_files,  # Pass assigned files
                 max_records=max_records_per_worker,  # Pass max_records per worker
             )
-            self.loader_workers.append(worker)
+            self.loader_actors.append(actor)
 
-        print(f"Created {len(self.loader_workers)} DataLoaderWorker actors")
+        print(f"Created {len(self.loader_actors)} LoaderActor actors")
 
     def _submit_batch_chain(self, batch_ref: ray.ObjectRef) -> tuple[ray.ObjectRef, list[ray.ObjectRef]]:
         """Submit a batch through all stages using Ray ObjectRef chaining.
@@ -315,9 +311,9 @@ class Executor:
         Core magic: Pass ObjectRefs like a chain. Ray automatically waits for
         previous task to complete and unpacks the result for the next task.
 
-        ZERO-COPY OPTIMIZATION: Accepts ObjectRef directly from loader worker,
+        ZERO-COPY OPTIMIZATION: Accepts ObjectRef directly from loader actor,
         avoiding data round-trip through driver. Data flows:
-        Loader Worker -> Object Store -> Stage Workers (driver never touches data)
+        LoaderActor -> Object Store -> StageActors (driver never touches data)
 
         Only the last stage writes data to improve I/O efficiency.
 
@@ -335,10 +331,10 @@ class Executor:
         # Chain through all stages
         # Only the last stage writes data (should_write=True)
         num_stages = len(self.stages)
-        for stage_idx, worker_group in enumerate(self.stages):
-            # Round-robin select a worker from this stage
-            worker_idx = self.stage_indices[stage_idx] % len(worker_group)
-            worker = worker_group[worker_idx]
+        for stage_idx, actor_group in enumerate(self.stages):
+            # Round-robin select an actor from this stage
+            actor_idx = self.stage_indices[stage_idx] % len(actor_group)
+            actor = actor_group[actor_idx]
             self.stage_indices[stage_idx] += 1
 
             # Key point: Pass the previous stage's Ref directly to the next
@@ -346,7 +342,7 @@ class Executor:
             # Only last stage writes data (better I/O efficiency)
             is_last_stage = stage_idx == num_stages - 1
             print(f"    Submitting to stage {stage_idx + 1}/{num_stages} (write={is_last_stage})...")
-            current_ref = worker.process_batch_with_records.remote(current_ref, should_write=is_last_stage)
+            current_ref = actor.process_batch_with_records.remote(current_ref, should_write=is_last_stage)
             all_refs.append(current_ref)
 
         print(f"    All {num_stages} stages submitted, returning final ref")
@@ -434,25 +430,25 @@ class Executor:
     def _execute_impl(self) -> Iterator[tuple]:
         """Internal implementation of execute with distributed loading.
 
-        Data loading is always distributed using DataLoaderWorker actors.
+        Data loading is always distributed using LoaderActor actors.
         """
         yield from self._execute_distributed()
 
     def _execute_distributed(self) -> Iterator[tuple]:
         """Distributed loading with streaming pipeline parallelism.
 
-        Each loader worker streams batches as they're ready, enabling true
+        Each loader actor streams batches as they're ready, enabling true
         pipeline parallelism where data loading and processing happen concurrently.
         """
         print("🚀 Starting distributed data loading with streaming pipeline...")
-        print(f"   Loader workers: {len(self.loader_workers)}")
+        print(f"   Loader actors: {len(self.loader_actors)}")
         print(f"   Processing stages: {len(self.stages)}")
         print(f"   Batch size: {self.config.executor.batch_size}")
 
         # Calculate max records per worker if max_samples is set
         max_records_per_worker = None
         if self.config.executor.max_samples:
-            max_records_per_worker = self.config.executor.max_samples // len(self.loader_workers)
+            max_records_per_worker = self.config.executor.max_samples // len(self.loader_actors)
             print(f"   Max records per worker: {max_records_per_worker}")
 
         # Maintain a pipeline of batches being processed across stages
@@ -465,20 +461,20 @@ class Executor:
             max_in_flight = self.config.executor.max_in_flight
         else:
             # Default: match number of loader workers so all can run in parallel
-            max_in_flight = len(self.loader_workers)
+            max_in_flight = len(self.loader_actors)
         print(f"   Max in-flight batches: {max_in_flight} (backpressure control)")
 
         # Track loader states
-        active_loaders = set(range(len(self.loader_workers)))  # Worker IDs still loading
-        loader_futures = {}  # worker_id -> pending future for next batch
-        loader_batch_counts = {i: 0 for i in range(len(self.loader_workers))}
+        active_loaders = set(range(len(self.loader_actors)))  # Loader actor IDs
+        loader_futures = {}  # actor_id -> pending future for next batch
+        loader_batch_counts = dict.fromkeys(range(len(self.loader_actors)), 0)
         loader_wait_count = 0  # Track how often loaders wait due to backpressure
 
         # Start requesting first batch from each loader (up to max_in_flight)
-        print("Starting streaming from DataLoaderWorker actors...")
-        initial_requests = min(max_in_flight, len(self.loader_workers))
+        print("Starting streaming from LoaderActor actors...")
+        initial_requests = min(max_in_flight, len(self.loader_actors))
         for worker_id in list(active_loaders)[:initial_requests]:
-            future = self.loader_workers[worker_id].get_next_batch.remote(max_records=max_records_per_worker)
+            future = self.loader_actors[worker_id].get_next_batch.remote(max_records=max_records_per_worker)
             loader_futures[worker_id] = future
 
         # Main loop: continuously poll loader workers and submit batches
@@ -492,7 +488,7 @@ class Executor:
                 ready_refs, _ = ray.wait(ready_futures, num_returns=1, timeout=0.01)
 
                 if ready_refs:
-                    # Find which worker produced this batch
+                    # Find which loader actor produced this batch
                     completed_ref = ready_refs[0]
                     worker_id = None
                     for wid, future in loader_futures.items():
@@ -513,7 +509,7 @@ class Executor:
 
                         if batch_ref is not None:
                             # Submit batch_ref directly to processing pipeline (zero-copy!)
-                            # Data flows: Loader Worker -> Object Store -> Stage Workers
+                            # Data flows: LoaderActor -> Object Store -> StageActors
                             # Driver never touches the actual batch data
                             loader_batch_counts[worker_id] += 1
                             print(
@@ -532,7 +528,7 @@ class Executor:
 
                         # BACKPRESSURE: Only request next batch if pipeline has capacity
                         if not completed and pipeline_has_capacity:
-                            future = self.loader_workers[worker_id].get_next_batch.remote(
+                            future = self.loader_actors[worker_id].get_next_batch.remote(
                                 max_records=max_records_per_worker
                             )
                             loader_futures[worker_id] = future
@@ -563,9 +559,7 @@ class Executor:
                 # Find paused loaders (active but not currently loading)
                 for worker_id in active_loaders:
                     if worker_id not in loader_futures and len(batch_pipeline) < max_in_flight:
-                        future = self.loader_workers[worker_id].get_next_batch.remote(
-                            max_records=max_records_per_worker
-                        )
+                        future = self.loader_actors[worker_id].get_next_batch.remote(max_records=max_records_per_worker)
                         loader_futures[worker_id] = future
 
         # Wait for all remaining processing tasks to complete
@@ -574,7 +568,7 @@ class Executor:
             for res in self._collect_completed(batch_pipeline, 0):  # 0 means wait for all
                 yield res
 
-        print(f"✅ Streaming pipeline completed. Total loaders: {len(self.loader_workers)}")
+        print(f"✅ Streaming pipeline completed. Total loaders: {len(self.loader_actors)}")
 
         # Collect and print loader throughput stats
         self._print_loader_stats()
@@ -589,9 +583,9 @@ class Executor:
         total_time = 0.0
         loader_stats = []
 
-        for worker in self.loader_workers:
+        for actor in self.loader_actors:
             try:
-                stats = ray.get(worker.get_stats.remote(), timeout=5.0)
+                stats = ray.get(actor.get_stats.remote(), timeout=5.0)
                 loader_stats.append(stats)
                 total_records += stats.get("records_processed", 0)
                 total_time = max(total_time, stats.get("total_time_sec", 0.0))
@@ -649,11 +643,11 @@ class Executor:
         if not self.metrics_aggregator or not self.metrics_collector:
             return
 
-        for worker_group, stage_config in zip(self.stages, self.config.stages, strict=False):
+        for actor_group, stage_config in zip(self.stages, self.config.stages, strict=False):
             stage_name = stage_config.name
 
             # Collect metrics from all workers in this stage
-            stage_metrics = self.metrics_aggregator.collect_stage_metrics(worker_group, stage_name)
+            stage_metrics = self.metrics_aggregator.collect_stage_metrics(actor_group, stage_name)
 
             # Add stage metrics to collector
             self.metrics_collector.add_stage_metrics(stage_metrics)
@@ -737,18 +731,18 @@ class Executor:
         stats = {}
 
         # Collect stats from all workers
-        for stage_idx, worker_group in enumerate(self.stages):
+        for stage_idx, actor_group in enumerate(self.stages):
             stage_name = f"stage_{stage_idx}"
             stats[stage_name] = {}
 
             # Get stats from ALL workers and aggregate (not just first worker)
-            if worker_group:
+            if actor_group:
                 try:
                     # Collect stats from all workers
                     all_worker_stats = []
-                    for worker in worker_group:
+                    for actor in actor_group:
                         try:
-                            worker_stats = ray.get(worker.get_operator_stats.remote())
+                            worker_stats = ray.get(actor.get_operator_stats.remote())
                             all_worker_stats.append(worker_stats)
                         except Exception:
                             # Skip unavailable workers
