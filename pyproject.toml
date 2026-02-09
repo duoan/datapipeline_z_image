@@ -57,6 +57,7 @@ dependencies = [
     "warcio>=1.7.5",
     "trafilatura>=2.0.0",
     "faiss-cpu>=1.13.2",
+    "plotly>=5.24.0",
 ]
 
 [project.optional-dependencies]
@@ -70,9 +71,7 @@ ml = [
     "torchvision>=0.15.0",     # Torchvision for image processing
     "open-clip-torch>=2.20.0", # OpenCLIP for image embeddings
 ]
-viz = [
-    "plotly>=5.24.0", # For interactive HTML visualizations in metrics reports
-]
+viz = []
 
 [project.urls]
 Homepage = "https://github.com/duoan/mega-data-factory"

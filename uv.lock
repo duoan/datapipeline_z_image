@@ -916,6 +916,7 @@ dependencies = [
     { name = "numpy" },
     { name = "open-clip-torch" },
     { name = "pillow" },
+    { name = "plotly" },
     { name = "pyarrow" },
     { name = "pyiceberg" },
     { name = "pyyaml" },
@@ -937,9 +938,6 @@ ml = [
     { name = "open-clip-torch" },
     { name = "torch" },
     { name = "torchvision" },
-]
-viz = [
-    { name = "plotly" },
 ]
 
 [package.dev-dependencies]
@@ -963,7 +961,7 @@ requires-dist = [
     { name = "open-clip-torch", marker = "extra == 'ml'", specifier = ">=2.20.0" },
     { name = "opencv-python", marker = "extra == 'enhanced'", specifier = ">=4.8.0" },
     { name = "pillow", specifier = ">=12.1.0" },
-    { name = "plotly", marker = "extra == 'viz'", specifier = ">=5.24.0" },
+    { name = "plotly", specifier = ">=5.24.0" },
     { name = "pyarrow", specifier = ">=14.0.0" },
     { name = "pyiceberg", specifier = ">=0.7.0" },
     { name = "pytesseract", marker = "extra == 'enhanced'", specifier = ">=0.3.10" },
