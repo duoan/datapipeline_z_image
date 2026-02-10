@@ -9,6 +9,8 @@ from .video_utils import (
     compute_file_hash,
     compute_stream_hash,
     extract_video_metadata,
+    get_video_frame,
+    get_video_frames,
     get_video_from_record,
 )
 
@@ -17,5 +19,7 @@ __all__ = [
     "compute_file_hash",
     "compute_stream_hash",
     "extract_video_metadata",
+    "get_video_frame",
+    "get_video_frames",
     "get_video_from_record",
 ]

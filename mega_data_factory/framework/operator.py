@@ -4,6 +4,7 @@ Operator: Abstract interface for record processing
 Defines the Operator, Refiner, Filter, and Deduplicator base classes.
 """
 
+import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -12,6 +13,20 @@ from typing import Any
 import pyarrow as pa
 
 from .dedup_backend import DedupBackend
+
+
+def _camel_to_snake(name: str) -> str:
+    """Convert CamelCase to snake_case.
+
+    Examples:
+        VideoMetadataRefiner -> video_metadata_refiner
+        RangeFilter -> range_filter
+        ImageClipEmbeddingRefiner -> image_clip_embedding_refiner
+    """
+    # Insert underscore before uppercase letters (except at start)
+    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    # Insert underscore before uppercase letters followed by lowercase
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
 @dataclass
@@ -36,6 +51,7 @@ class Operator(ABC):
         Args:
             collect_rejected: If True, collect rejected samples for deep dive analysis
         """
+        self._operator_name: str | None = None  # Can be overridden by subclasses
         self._stats = {
             "input_records": 0,
             "output_records": 0,
@@ -46,6 +62,22 @@ class Operator(ABC):
         }
         self._collect_rejected = collect_rejected
         self._rejected_buffer: list[dict[str, Any]] = []
+
+    @property
+    def operator_name(self) -> str:
+        """Return the operator name for metrics and logging in snake_case.
+
+        Subclasses can override this property or set self._operator_name
+        to provide a custom name (e.g., "video_aesthetic_score_range_filter"
+        instead of just "range_filter").
+
+        Returns:
+            Custom operator name if set, otherwise the class name in snake_case.
+            Examples: VideoMetadataRefiner -> video_metadata_refiner
+        """
+        if self._operator_name is not None:
+            return self._operator_name
+        return _camel_to_snake(self.__class__.__name__)
 
     def process_batch(self, records: list[dict[str, Any]]) -> list[dict[str, Any] | None]:
         """Process a batch of records with automatic stats collection."""
@@ -270,7 +302,7 @@ class Filter(Operator):
                 rejected_record = record.copy()
                 rejected_record["_rejection_details"] = {
                     "reason": "filtered",
-                    "operator": self.__class__.__name__,
+                    "operator": self.operator_name,
                 }
                 rejected.append(rejected_record)
 
@@ -356,7 +388,7 @@ class Deduplicator(Operator):
                     rejected_record = record.copy()
                     rejection_details: dict[str, Any] = {
                         "reason": "duplicate",
-                        "operator": self.__class__.__name__,
+                        "operator": self.operator_name,
                         "dedup_key": key,
                     }
                     if rep_id is not None:
@@ -378,7 +410,7 @@ class Deduplicator(Operator):
                     rejected_record = record.copy()
                     rejected_record["_rejection_details"] = {
                         "reason": "duplicate",
-                        "operator": self.__class__.__name__,
+                        "operator": self.operator_name,
                         "dedup_key": key,
                     }
                     rejected.append(rejected_record)
@@ -443,7 +475,7 @@ class CombinedOperator(Operator):
 
     def get_stats(self) -> dict[str, Any]:
         """Get performance statistics from all operators."""
-        return {op.__class__.__name__: op.get_stats() for op in self.operators}
+        return {op.operator_name: op.get_stats() for op in self.operators}
 
     def get_output_schema(self) -> dict[str, pa.DataType]:
         combined = {}

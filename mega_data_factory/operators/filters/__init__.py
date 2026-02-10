@@ -2,6 +2,7 @@
 
 from mega_data_factory.framework import OperatorRegistry
 
+from .range_filter import RangeFilter
 from .text_alphabetic_word_ration_filter import TextAlphabeticWordRationFilter
 from .text_avg_word_length_filter import TextAvgWordLengthFilter
 from .text_bullet_filter import TextBulletFilter
@@ -12,6 +13,7 @@ from .text_symbol_ratio_filter import TextSymbolRatioFilter
 from .url_filter import URLFilter
 
 # Register text-only filters (no heavy dependencies)
+OperatorRegistry.register("RangeFilter", RangeFilter)
 OperatorRegistry.register("TextLengthFilter", TextLengthFilter)
 OperatorRegistry.register("UrlFilter", URLFilter)
 OperatorRegistry.register("TextAlphabeticWordRationFilter", TextAlphabeticWordRationFilter)
@@ -36,6 +38,7 @@ except ImportError:
 
 
 __all__ = [
+    "RangeFilter",
     "TextLengthFilter",
     "URLFilter",
     "TextAlphabeticWordRationFilter",

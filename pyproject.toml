@@ -58,6 +58,8 @@ dependencies = [
     "trafilatura>=2.0.0",
     "faiss-cpu>=1.13.2",
     "plotly>=5.24.0",
+    "opencv-python>=4.11.0.86",
+    "yt-dlp>=2026.2.4",
 ]
 
 [project.optional-dependencies]

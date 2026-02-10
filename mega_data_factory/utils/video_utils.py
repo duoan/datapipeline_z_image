@@ -15,7 +15,10 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+import cv2
+import numpy as np
 import requests
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -78,12 +81,162 @@ class VideoLoader:
         parsed = urlparse(path)
         return parsed.scheme in ("http", "https", "ftp", "s3", "gs")
 
-    def _download_video(self, url: str, cache_path: Path) -> bool:
-        """Download video from URL to cache path.
+    def _is_youtube_url(self, url: str) -> bool:
+        """Check if the URL is a YouTube video URL.
+
+        Supports various YouTube URL formats:
+        - https://www.youtube.com/watch?v=VIDEO_ID
+        - https://youtu.be/VIDEO_ID
+        - https://www.youtube.com/embed/VIDEO_ID
+        - https://www.youtube.com/v/VIDEO_ID
+        - https://www.youtube.com/shorts/VIDEO_ID
+        """
+        parsed = urlparse(url)
+        hostname = parsed.hostname or ""
+
+        youtube_hosts = (
+            "youtube.com",
+            "www.youtube.com",
+            "m.youtube.com",
+            "youtu.be",
+            "www.youtu.be",
+        )
+
+        return hostname in youtube_hosts or hostname.endswith(".youtube.com")
+
+    def _download_youtube_video(self, url: str, cache_path: Path) -> bool:
+        """Download video from YouTube using yt-dlp.
+
+        Args:
+            url: YouTube video URL.
+            cache_path: Path to save the downloaded video.
 
         Returns:
             True if download succeeded, False otherwise.
         """
+        try:
+            import yt_dlp
+        except ImportError:
+            logger.error(
+                "yt-dlp is not installed. Please install it with: pip install yt-dlp"
+            )
+            return False
+
+        logger.info(f"Starting YouTube video download: {url}")
+
+        # Configure yt-dlp options
+        ydl_opts = {
+            "format": "best[ext=mp4]/best",  # Prefer mp4, fallback to best available
+            "outtmpl": str(cache_path.with_suffix(".%(ext)s")),
+            "quiet": True,
+            "no_warnings": True,
+            "socket_timeout": self.timeout,
+            "retries": 3,
+            "fragment_retries": 3,
+        }
+
+        # Add max file size limit if configured
+        if self.max_file_size:
+            max_size_mb = self.max_file_size / (1024 * 1024)
+            # yt-dlp uses bytes for max_filesize
+            ydl_opts["max_filesize"] = self.max_file_size
+            logger.debug(f"YouTube download max file size: {max_size_mb:.2f} MB")
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # First, extract info to check video availability and size
+                info = ydl.extract_info(url, download=False)
+                if info is None:
+                    logger.warning(f"Failed to extract info from YouTube URL: {url}")
+                    return False
+
+                video_title = info.get("title", "Unknown")
+                duration = info.get("duration", 0)
+                filesize = info.get("filesize") or info.get("filesize_approx")
+
+                logger.info(
+                    f"YouTube video info: '{video_title}' "
+                    f"(duration: {duration}s, "
+                    f"size: {filesize / (1024 * 1024):.2f} MB)" if filesize else
+                    f"YouTube video info: '{video_title}' (duration: {duration}s)"
+                )
+
+                # Check file size before downloading
+                if filesize and self.max_file_size and filesize > self.max_file_size:
+                    max_size_mb = self.max_file_size / (1024 * 1024)
+                    logger.warning(
+                        f"YouTube video too large: {filesize / (1024 * 1024):.2f} MB > "
+                        f"{max_size_mb:.2f} MB limit, skipping {url}"
+                    )
+                    return False
+
+                # Download the video
+                ydl.download([url])
+
+            # Find the downloaded file (extension might vary)
+            downloaded_file = None
+            for ext in [".mp4", ".webm", ".mkv", ".avi", ".mov", ".flv"]:
+                potential_path = cache_path.with_suffix(ext)
+                if potential_path.exists():
+                    downloaded_file = potential_path
+                    break
+
+            if downloaded_file is None:
+                # Try to find any file with the cache key prefix
+                cache_key = cache_path.stem
+                for file in cache_path.parent.iterdir():
+                    if file.stem == cache_key and file.is_file():
+                        downloaded_file = file
+                        break
+
+            if downloaded_file is None:
+                logger.warning(f"Downloaded file not found for YouTube URL: {url}")
+                return False
+
+            # Rename to expected cache path if different
+            if downloaded_file != cache_path:
+                # Update cache_path to use the actual extension
+                actual_cache_path = cache_path.with_suffix(downloaded_file.suffix)
+                if downloaded_file != actual_cache_path:
+                    downloaded_file.rename(actual_cache_path)
+                    downloaded_file = actual_cache_path
+
+            # Track downloaded file for batch cleanup
+            self._batch_downloaded_files.add(str(downloaded_file))
+
+            file_size_mb = downloaded_file.stat().st_size / (1024 * 1024)
+            logger.info(
+                f"YouTube video download completed: {file_size_mb:.2f} MB saved to "
+                f"{downloaded_file.name} (source: {url[:60]}{'...' if len(url) > 60 else ''})"
+            )
+            return True
+
+        except Exception as e:
+            logger.warning(f"Failed to download YouTube video from {url}: {e}")
+            # Clean up any partial downloads
+            for ext in [".mp4", ".webm", ".mkv", ".avi", ".mov", ".flv", ".part", ".ytdl"]:
+                potential_path = cache_path.with_suffix(ext)
+                if potential_path.exists():
+                    try:
+                        potential_path.unlink()
+                    except OSError:
+                        pass
+            return False
+
+    def _download_video(self, url: str, cache_path: Path) -> bool:
+        """Download video from URL to cache path.
+
+        Supports both direct video URLs and YouTube URLs.
+        For YouTube URLs, uses yt-dlp for downloading.
+
+        Returns:
+            True if download succeeded, False otherwise.
+        """
+        # Check if this is a YouTube URL
+        if self._is_youtube_url(url):
+            return self._download_youtube_video(url, cache_path)
+
+        # Standard HTTP download for direct video URLs
         logger.info(f"Starting video download: {url}")
         try:
             # Stream download to handle large files
@@ -602,3 +755,139 @@ def _parse_frame_rate(frame_rate_str: str | None) -> float | None:
         return float(frame_rate_str)
     except (ValueError, ZeroDivisionError):
         return None
+
+
+def get_video_frame(
+    video_path: str,
+    frame_position: str = "middle",
+    frame_index: int | None = None,
+) -> Image.Image | None:
+    """Extract a single frame from a video file.
+
+    This function extracts a frame from a video using OpenCV and returns it
+    as a PIL Image. It supports extracting frames from specific positions
+    (beginning, middle, end) or by explicit frame index.
+
+    Args:
+        video_path: Path to the video file.
+        frame_position: Position to extract frame from. Options:
+            - "middle": Extract the middle frame (default)
+            - "first": Extract the first frame
+            - "last": Extract the last frame
+        frame_index: Explicit frame index to extract. If provided, overrides frame_position.
+
+    Returns:
+        PIL Image of the extracted frame, or None if extraction failed.
+
+    Example:
+        >>> frame = get_video_frame("video.mp4")  # Get middle frame
+        >>> frame = get_video_frame("video.mp4", frame_position="first")  # Get first frame
+        >>> frame = get_video_frame("video.mp4", frame_index=100)  # Get frame at index 100
+    """
+    try:
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            logger.warning(f"Failed to open video: {video_path}")
+            return None
+
+        # Get video properties
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if frame_count <= 0:
+            logger.warning(f"Video has no frames: {video_path}")
+            cap.release()
+            return None
+
+        # Determine which frame to extract
+        if frame_index is not None:
+            target_frame = min(max(0, frame_index), frame_count - 1)
+        elif frame_position == "first":
+            target_frame = 0
+        elif frame_position == "last":
+            target_frame = frame_count - 1
+        else:  # "middle" or default
+            target_frame = frame_count // 2
+
+        # Seek to target frame
+        cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+        ret, frame = cap.read()
+        cap.release()
+
+        if not ret or frame is None:
+            logger.warning(f"Failed to read frame {target_frame} from {video_path}")
+            return None
+
+        # Convert BGR (OpenCV) to RGB and create PIL Image
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        return Image.fromarray(frame_rgb)
+
+    except Exception as e:
+        logger.warning(f"Error extracting frame from {video_path}: {e}")
+        return None
+
+
+def get_video_frames(
+    video_path: str,
+    num_frames: int = 8,
+    sampling_strategy: str = "uniform",
+) -> list[Image.Image]:
+    """Extract multiple frames from a video file.
+
+    This function extracts multiple frames from a video using OpenCV and returns
+    them as a list of PIL Images. It supports different sampling strategies.
+
+    Args:
+        video_path: Path to the video file.
+        num_frames: Number of frames to extract (default: 8).
+        sampling_strategy: How to sample frames. Options:
+            - "uniform": Uniformly sample frames across the video (default)
+            - "first_n": Extract the first N frames
+            - "last_n": Extract the last N frames
+
+    Returns:
+        List of PIL Images. May contain fewer frames than requested if video is short.
+
+    Example:
+        >>> frames = get_video_frames("video.mp4", num_frames=8)  # Get 8 uniform frames
+        >>> frames = get_video_frames("video.mp4", num_frames=4, sampling_strategy="first_n")
+    """
+    frames = []
+    try:
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            logger.warning(f"Failed to open video: {video_path}")
+            return frames
+
+        # Get video properties
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if frame_count <= 0:
+            logger.warning(f"Video has no frames: {video_path}")
+            cap.release()
+            return frames
+
+        # Determine frame indices to extract
+        if sampling_strategy == "first_n":
+            indices = list(range(min(num_frames, frame_count)))
+        elif sampling_strategy == "last_n":
+            start = max(0, frame_count - num_frames)
+            indices = list(range(start, frame_count))
+        else:  # "uniform" or default
+            if frame_count <= num_frames:
+                indices = list(range(frame_count))
+            else:
+                # Uniformly sample frames
+                indices = [int(i * (frame_count - 1) / (num_frames - 1)) for i in range(num_frames)]
+
+        # Extract frames
+        for idx in indices:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+            ret, frame = cap.read()
+            if ret and frame is not None:
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                frames.append(Image.fromarray(frame_rgb))
+
+        cap.release()
+        return frames
+
+    except Exception as e:
+        logger.warning(f"Error extracting frames from {video_path}: {e}")
+        return frames

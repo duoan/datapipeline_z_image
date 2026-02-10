@@ -210,18 +210,20 @@ class StageActor:
         """Get performance statistics from all operators in this actor.
 
         Returns:
-            Dictionary mapping operator class names to their statistics
+            Dictionary mapping operator names to their statistics.
+            Uses operator_name property which may include field info
+            (e.g., "RangeFilter_video_aesthetic_score" instead of just "RangeFilter").
         """
         stats = {}
         # Check if CombinedOperator (has operators attribute)
         if hasattr(self.operator, "operators"):
             # CombinedOperator - get stats from individual operators
             for op in self.operator.operators:
-                op_name = op.__class__.__name__
+                op_name = op.operator_name
                 stats[op_name] = op.get_stats()
         else:
             # Single operator
-            op_name = self.operator.__class__.__name__
+            op_name = self.operator.operator_name
             stats[op_name] = self.operator.get_stats()
         return stats
 

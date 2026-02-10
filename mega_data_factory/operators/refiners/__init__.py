@@ -28,10 +28,14 @@ def _register_image_refiners():
 
 
 def _register_video_refiners():
-    """Lazy register video refiners."""
+    """Lazy register video refiners that depend on OpenCV/torch."""
+    from .video_aesthetics_score_refiner import VideoAestheticScoreRefiner
+    from .video_clip_embedding import VideoClipEmbeddingRefiner
     from .video_metadata import VideoMetadataRefiner
 
     OperatorRegistry.register("VideoMetadataRefiner", VideoMetadataRefiner)
+    OperatorRegistry.register("VideoClipEmbeddingRefiner", VideoClipEmbeddingRefiner)
+    OperatorRegistry.register("VideoAestheticScoreRefiner", VideoAestheticScoreRefiner)
 
 
 try:
