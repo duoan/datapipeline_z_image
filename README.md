@@ -143,6 +143,12 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 |----------|-------------|
 | [`ImageQualityFilter`](mega_data_factory/operators/filters/image_quality_filter.md) | Filter by size, quality metrics, aesthetic score |
 
+**Deduplicators:**
+
+| Operator | Description | Acceleration |
+|----------|-------------|--------------|
+| [`ImagePhashDeduplicator`](mega_data_factory/operators/dedup/image_phash_dedup.md) | Perceptual hash deduplication | 🦀 Rust |
+
 ### General Operators
 
 **Filters:**
@@ -150,12 +156,6 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 | Operator | Description |
 |----------|-------------|
 | [`RangeFilter`](mega_data_factory/operators/filters/range_filter.md) | Generic range filter for any numeric field (min/max bounds) |
-
-**Deduplicators:**
-
-| Operator | Description | Acceleration |
-|----------|-------------|--------------|
-| [`ImagePhashDeduplicator`](mega_data_factory/operators/dedup/image_phash_dedup.md) | Perceptual hash deduplication | 🦀 Rust |
 
 ### Video Operators
 
