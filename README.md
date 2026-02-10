@@ -143,6 +143,14 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 |----------|-------------|
 | [`ImageQualityFilter`](mega_data_factory/operators/filters/image_quality_filter.md) | Filter by size, quality metrics, aesthetic score |
 
+### General Operators
+
+**Filters:**
+
+| Operator | Description |
+|----------|-------------|
+| [`RangeFilter`](mega_data_factory/operators/filters/range_filter.md) | Generic range filter for any numeric field (min/max bounds) |
+
 **Deduplicators:**
 
 | Operator | Description | Acceleration |
@@ -156,6 +164,8 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 | Operator | Description | Requirements |
 |----------|-------------|--------------|
 | [`VideoMetadataRefiner`](mega_data_factory/operators/refiners/video_metadata.md) | Extract video metadata (duration, resolution, fps, codec, bitrate, audio info) | FFprobe |
+| [`VideoAestheticsScoreRefiner`](mega_data_factory/operators/refiners/video_aesthetics_score_refiner.md) | Video aesthetic quality scoring via frame sampling | 🖥️ GPU |
+| [`VideoClipEmbeddingRefiner`](mega_data_factory/operators/refiners/video_clip_embedding.md) | CLIP embeddings for video frames (mean/max pooling) | 🖥️ GPU |
 
 **Deduplicators:**
 
