@@ -10,6 +10,7 @@ from .text_ellipsis_line_ratio_filter import TextEllipsisLineRatioFilter
 from .text_length_filter import TextLengthFilter
 from .text_repetition_filter import TextRepetitionFilter
 from .text_symbol_ratio_filter import TextSymbolRatioFilter
+from .text_target_language_filter import TextTargetLanguageFilter
 from .url_filter import URLFilter
 
 # Register text-only filters (no heavy dependencies)
@@ -22,11 +23,13 @@ OperatorRegistry.register("TextBulletFilter", TextBulletFilter)
 OperatorRegistry.register("TextEllipsisLineRatioFilter", TextEllipsisLineRatioFilter)
 OperatorRegistry.register("TextRepetitionFilter", TextRepetitionFilter)
 OperatorRegistry.register("TextSymbolRatioFilter", TextSymbolRatioFilter)
+OperatorRegistry.register("TextTargetLanguageFilter", TextTargetLanguageFilter)
 
 
 def _register_image_filters():
     """Lazy register image filters that depend on PIL."""
     from .image_quality_filter import ImageQualityFilter
+
     OperatorRegistry.register("ImageQualityFilter", ImageQualityFilter)
 
 
@@ -47,4 +50,5 @@ __all__ = [
     "TextEllipsisLineRatioFilter",
     "TextRepetitionFilter",
     "TextSymbolRatioFilter",
+    "TextTargetLanguageFilter",
 ]

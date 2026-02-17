@@ -110,6 +110,7 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 | [`TextEllipsisLineRatioFilter`](mega_data_factory/operators/filters/text_ellipsis_line_ratio_filter.md) (`text_ellipsis_line_ratio_filter`) | Filter by ellipsis-ending line ratio | RefinedWeb-style heuristic |
 | [`TextSymbolRatioFilter`](mega_data_factory/operators/filters/text_symbol_ratio_filter.md) (`text_symbol_ratio_filter`) | Filter by symbol-to-word ratio (`#`, `...`, `. . .`, `…`) | RefinedWeb-style heuristic |
 | [`TextRepetitionFilter`](mega_data_factory/operators/filters/text_repetition_filter.md) (`text_repetition_filter`) | Multi-granularity n-gram repetition checks (line/paragraph/word) | Gopher / MassiveText heuristic |
+| [`TextTargetLanguageFilter`](mega_data_factory/operators/filters/text_target_language_filter.md) (`text_target_language_filter`) | FastText language detection with score threshold | CCNet |
 
 **Deduplicators:**
 
@@ -118,7 +119,6 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 | [`TextExactDeduplicator`](mega_data_factory/operators/dedup/text_exact_dedup.md) | Exact content hash deduplication (xxhash/MD5) |
 
 **Coming Soon:**
-- `LanguageFilter` - fastText language detection
 - `PerplexityFilter` - KenLM perplexity scoring
 - `QualityClassifierFilter` - Model-based quality (FineWeb-Edu style)
 - `MinHashDeduplicator` - Near-duplicate detection

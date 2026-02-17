@@ -49,6 +49,11 @@ stages:
       - name: text_exact_deduplicator
         params:
           text_field: "text"
+      - name: text_target_language_filter
+        params:
+          text_field: "text"
+          target_languages: ["eng"]
+          min_score: 0.65
     worker:
       min_replicas: 2
       max_replicas: 2

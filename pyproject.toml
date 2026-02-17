@@ -60,6 +60,8 @@ dependencies = [
     "plotly>=5.24.0",
     "opencv-python>=4.11.0.86",
     "yt-dlp>=2026.2.4",
+    "fasttext>=0.9.3",
+    "numpy<2.0",  # fasttext requires numpy<2.0
 ]
 
 [project.optional-dependencies]
