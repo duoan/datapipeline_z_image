@@ -65,6 +65,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+llm-online = [
+    "httpx[socks]>=0.28.0", # HTTP client with SOCKS proxy support for LLM APIs
+]
+llm-offline = [
+    "vllm>=0.6.0",          # Local GPU inference engine
+]
 enhanced = [
     "langdetect>=1.0.9",    # For better language detection
     "pytesseract>=0.3.10",  # For OCR text detection

@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.13"
 resolution-markers = [
     "sys_platform == 'darwin'",
@@ -626,6 +626,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad", size = 73517, upload-time = "2024-12-06T15:37:21.509Z" },
 ]
 
+[package.optional-dependencies]
+socks = [
+    { name = "socksio" },
+]
+
 [[package]]
 name = "huggingface-hub"
 version = "0.36.0"
@@ -948,6 +953,9 @@ enhanced = [
     { name = "opencv-python" },
     { name = "pytesseract" },
 ]
+llm = [
+    { name = "httpx", extra = ["socks"] },
+]
 ml = [
     { name = "open-clip-torch" },
     { name = "torch" },
@@ -966,6 +974,7 @@ requires-dist = [
     { name = "fasttext", specifier = ">=0.9.3" },
     { name = "ffmpeg-python", specifier = ">=0.2.0" },
     { name = "fsspec", specifier = ">=2025.10.0" },
+    { name = "httpx", extras = ["socks"], marker = "extra == 'llm'", specifier = ">=0.28.0" },
     { name = "huggingface-hub", specifier = ">=0.20.0" },
     { name = "imagehash", specifier = ">=4.3.2" },
     { name = "jinja2", specifier = ">=3.1.0" },
@@ -993,7 +1002,7 @@ requires-dist = [
     { name = "warcio", specifier = ">=1.7.5" },
     { name = "yt-dlp", specifier = ">=2026.2.4" },
 ]
-provides-extras = ["enhanced", "ml", "viz"]
+provides-extras = ["llm", "enhanced", "ml", "viz"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=9.0.2" }]
@@ -2442,6 +2451,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/67/9a/0a7acb748b86e2922982366d780ca4b16c33f7246fa5860d26005c97e4f3/smart_open-7.5.0.tar.gz", hash = "sha256:f394b143851d8091011832ac8113ea4aba6b92e6c35f6e677ddaaccb169d7cb9", size = 53920, upload-time = "2025-11-08T21:38:40.698Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ad/95/bc978be7ea0babf2fb48a414b6afaad414c6a9e8b1eafc5b8a53c030381a/smart_open-7.5.0-py3-none-any.whl", hash = "sha256:87e695c5148bbb988f15cec00971602765874163be85acb1c9fb8abc012e6599", size = 63940, upload-time = "2025-11-08T21:38:39.024Z" },
+]
+
+[[package]]
+name = "socksio"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/5c/48a7d9495be3d1c651198fd99dbb6ce190e2274d0f28b9051307bdec6b85/socksio-1.0.0.tar.gz", hash = "sha256:f88beb3da5b5c38b9890469de67d0cb0f9d494b78b106ca1845f96c10b91c4ac", size = 19055, upload-time = "2020-04-17T15:50:34.664Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/37/c3/6eeb6034408dac0fa653d126c9204ade96b819c936e136c5e8a6897eee9c/socksio-1.0.0-py3-none-any.whl", hash = "sha256:95dc1f15f9b34e8d7b16f06d74b8ccf48f609af32ab33c608d08761c5dcbb1f3", size = 12763, upload-time = "2020-04-17T15:50:31.878Z" },
 ]
 
 [[package]]

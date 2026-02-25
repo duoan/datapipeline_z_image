@@ -38,6 +38,21 @@ def _register_video_refiners():
     OperatorRegistry.register("VideoAestheticScoreRefiner", VideoAestheticScoreRefiner)
 
 
+def _register_llm_refiners():
+    """Lazy register LLM synthesis refiners."""
+    from .llm_synthesis import LLMOnlineSynthesisRefiner, LLMResponseParserRefiner
+
+    OperatorRegistry.register("LlmOnlineSynthesisRefiner", LLMOnlineSynthesisRefiner)
+    OperatorRegistry.register("LlmResponseParserRefiner", LLMResponseParserRefiner)
+
+    try:
+        from .llm_synthesis import LLMOfflineSynthesisRefiner
+
+        OperatorRegistry.register("LlmOfflineSynthesisRefiner", LLMOfflineSynthesisRefiner)
+    except ImportError:
+        pass
+
+
 try:
     _register_image_refiners()
 except ImportError:
@@ -45,6 +60,11 @@ except ImportError:
 
 try:
     _register_video_refiners()
+except ImportError:
+    pass
+
+try:
+    _register_llm_refiners()
 except ImportError:
     pass
 

@@ -38,20 +38,22 @@ A reproducible, high-throughput, distributed open-source pipeline for processing
 | [InternVid](https://arxiv.org/pdf/2307.06942) | Video-language | 📋 Planned |
 | [OpenVid-1M](https://arxiv.org/pdf/2407.02371) | Video generation | 📋 Planned |
 
-
 ## Pipeline Run Reports
 
-https://huggingface.co/spaces/classtag/mega-data-factory-reports
+<https://huggingface.co/spaces/classtag/mega-data-factory-reports>
 This space contains interactive HTML reports for pipeline runs, showcasing metrics, visualizations, and performance statistics.
 
 ### Data Quality Funnel
-![](images/data_quality_funnel.png)
+
+![data quality funnel](images/data_quality_funnel.png)
 
 ### Data Flow Sankey
-![](images/data_flow_sankey.png)
+
+![data flow sankey](images/data_flow_sankey.png)
 
 ### Data Detail Metrics
-![](images/data_detail_metrics.png)
+
+![data detail metrics](images/data_detail_metrics.png)
 
 ## Installation
 
@@ -119,6 +121,7 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 | [`TextExactDeduplicator`](mega_data_factory/operators/dedup/text_exact_dedup.md) | Exact content hash deduplication (xxhash/MD5) |
 
 **Coming Soon:**
+
 - `PerplexityFilter` - KenLM perplexity scoring
 - `QualityClassifierFilter` - Model-based quality (FineWeb-Edu style)
 - `MinHashDeduplicator` - Near-duplicate detection
@@ -622,17 +625,20 @@ OperatorRegistry.register("MyImageRefiner", MyImageRefiner)
 ## References
 
 ### Text Data Pipelines
+
 - [RefinedWeb (arXiv:2306.01116)](https://arxiv.org/pdf/2306.01116) - URL filtering, trafilatura, MassiveText dedup
 - [FineWeb](https://huggingface.co/spaces/HuggingFaceFW/blogpost-fineweb-v1) - 15T token dataset, quality filtering
 - [DCLM (arXiv:2406.11794)](https://arxiv.org/pdf/2406.11794) - Data curation for language models
 - [Dolma (arXiv:2402.00159)](https://arxiv.org/pdf/2402.00159) - Open corpus for LLM pretraining
 
 ### Image & Vision-Language
+
 - [Z-Image (arXiv:2511.22699)](https://arxiv.org/pdf/2511.22699) - Image generation foundation model data
 - [DataComp (arXiv:2304.14108)](https://arxiv.org/pdf/2304.14108) - CLIP filtering benchmark
 - [LAION-5B (arXiv:2210.08402)](https://arxiv.org/pdf/2210.08402) - Large-scale image-text dataset
 
 ### Tools & Models
+
 - [OpenCLIP](https://github.com/mlfoundations/open_clip) - CLIP implementation
 - [SigLIP2](https://huggingface.co/google/siglip2-so400m-patch14-384) - Vision encoder
 - [dom_smoothie](https://github.com/nicr9/dom_smoothie) - Rust readability.js port

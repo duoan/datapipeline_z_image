@@ -1,0 +1,240 @@
+# Example: LLM Synthesis Pipeline
+#
+# This pipeline reads seed prompts from a dataset, synthesizes responses via
+# LLM, and writes the results (prompt + response + thinking) to Parquet.
+#
+# Two modes:
+#   Online  - calls remote APIs (OpenAI, Claude, Gemini, DeepSeek, etc.)
+#             with account pool + proxy pool for anti-throttling
+#   Offline - runs models locally on GPUs via vLLM engine
+#             no network overhead, maximum throughput
+
+data_loader:
+  type: HuggingFaceLoader
+  params:
+    dataset_name: "your-org/seed-prompts"
+    split: "train"
+    streaming: true
+  num_workers: 2
+
+stages:
+  # ================================================================
+  #  ONLINE MODE - remote API calls
+  # ================================================================
+
+  # ---- Claude with extended thinking ----
+  - name: claude_synthesis
+    operators:
+      - name: llm_online_synthesis_refiner
+        params:
+          provider: anthropic
+          model: claude-sonnet-4-20250514
+          system_prompt: "You are a world-class expert. Think step by step."
+          prompt_field: prompt
+          # image_field: image   # uncomment for vision tasks
+
+          response_field: llm_response
+          thinking_field: llm_thinking
+          model_field: llm_model
+          usage_field: llm_usage
+          error_field: llm_error
+
+          max_tokens: 8192
+          temperature: 0.7
+          enable_thinking: true
+          thinking_budget: 10000
+
+          # Account pool - rotate API keys for higher throughput
+          accounts:
+            - api_key: "${ANTHROPIC_API_KEY_1}"
+            - api_key: "${ANTHROPIC_API_KEY_2}"
+          # accounts_file: "secrets/anthropic_accounts.jsonl"
+
+          # Proxy pool - rotate proxies to avoid IP throttling
+          # proxies:
+          #   - "http://user:pass@proxy1.example.com:8080"
+          #   - "socks5://user:pass@proxy2.example.com:1080"
+          # proxies_file: "secrets/proxies.txt"
+
+          max_concurrent: 8
+          retry_attempts: 3
+          request_timeout: 120.0
+    worker:
+      num_replicas: 1
+      resources:
+        cpu: 2
+
+  # ---- OpenAI GPT-4o with vision ----
+  # - name: openai_synthesis
+  #   operators:
+  #     - name: llm_online_synthesis_refiner
+  #       params:
+  #         provider: openai
+  #         model: gpt-4o
+  #         system_prompt: "Describe the image in detail."
+  #         prompt_field: prompt
+  #         image_field: image
+  #         max_tokens: 4096
+  #         accounts:
+  #           - api_key: "${OPENAI_API_KEY}"
+  #         max_concurrent: 16
+  #   worker:
+  #     num_replicas: 2
+  #     resources:
+  #       cpu: 1
+
+  # ---- Gemini 2.5 Flash with thinking + video ----
+  # - name: gemini_synthesis
+  #   operators:
+  #     - name: llm_online_synthesis_refiner
+  #       params:
+  #         provider: gemini
+  #         model: gemini-2.5-flash
+  #         prompt_field: prompt
+  #         video_field: video
+  #         enable_thinking: true
+  #         thinking_budget: 8000
+  #         max_tokens: 4096
+  #         accounts:
+  #           - api_key: "${GEMINI_API_KEY}"
+  #         max_concurrent: 10
+  #   worker:
+  #     num_replicas: 1
+  #     resources:
+  #       cpu: 1
+
+  # ---- DeepSeek-R1 via OpenAI-compatible API ----
+  # - name: deepseek_synthesis
+  #   operators:
+  #     - name: llm_online_synthesis_refiner
+  #       params:
+  #         provider: openai
+  #         model: deepseek-reasoner
+  #         prompt_field: prompt
+  #         max_tokens: 8192
+  #         temperature: 0.0
+  #         accounts:
+  #           - api_key: "${DEEPSEEK_API_KEY}"
+  #             base_url: "https://api.deepseek.com/v1"
+  #         max_concurrent: 8
+  #   worker:
+  #     num_replicas: 1
+  #     resources:
+  #       cpu: 1
+
+  # ---- Using a prompt template ----
+  # - name: template_synthesis
+  #   operators:
+  #     - name: llm_online_synthesis_refiner
+  #       params:
+  #         provider: openai
+  #         model: gpt-4o-mini
+  #         prompt_template: |
+  #           Given the following code:
+  #           ```{language}
+  #           {code}
+  #           ```
+  #           Please explain what this code does and suggest improvements.
+  #         accounts:
+  #           - api_key: "${OPENAI_API_KEY}"
+  #         max_concurrent: 16
+  #   worker:
+  #     num_replicas: 2
+  #     resources:
+  #       cpu: 1
+
+  # ================================================================
+  #  OFFLINE MODE - local GPU inference via vLLM
+  # ================================================================
+
+  # ---- Local Qwen2.5 72B on 4 GPUs ----
+  # - name: local_qwen_synthesis
+  #   operators:
+  #     - name: llm_offline_synthesis_refiner
+  #       params:
+  #         model: "Qwen/Qwen2.5-72B-Instruct"
+  #         system_prompt: "You are a helpful assistant."
+  #         prompt_field: prompt
+  #         max_tokens: 4096
+  #         temperature: 0.7
+  #         tensor_parallel_size: 4
+  #         gpu_memory_utilization: 0.90
+  #   worker:
+  #     num_replicas: 1    # single worker owns all GPUs
+  #     resources:
+  #       cpu: 4
+  #       gpu: 4
+
+  # ---- Local DeepSeek-R1 with thinking extraction ----
+  # - name: local_deepseek_synthesis
+  #   operators:
+  #     - name: llm_offline_synthesis_refiner
+  #       params:
+  #         model: "deepseek-ai/DeepSeek-R1"
+  #         prompt_field: prompt
+  #         max_tokens: 8192
+  #         temperature: 0.6
+  #         thinking_pattern: deepseek   # extracts <think>...</think> blocks
+  #         tensor_parallel_size: 8
+  #         gpu_memory_utilization: 0.95
+  #   worker:
+  #     num_replicas: 1
+  #     resources:
+  #       cpu: 4
+  #       gpu: 8
+
+  # ---- Local VLM (vision-language model) ----
+  # - name: local_vlm_synthesis
+  #   operators:
+  #     - name: llm_offline_synthesis_refiner
+  #       params:
+  #         model: "Qwen/Qwen2-VL-7B-Instruct"
+  #         prompt_field: prompt
+  #         image_field: image
+  #         max_tokens: 2048
+  #         tensor_parallel_size: 1
+  #   worker:
+  #     num_replicas: 1
+  #     resources:
+  #       cpu: 2
+  #       gpu: 1
+
+  # ---- AWQ-quantized model for limited GPU memory ----
+  # - name: local_quantized_synthesis
+  #   operators:
+  #     - name: llm_offline_synthesis_refiner
+  #       params:
+  #         model: "Qwen/Qwen2.5-72B-Instruct-AWQ"
+  #         prompt_field: prompt
+  #         max_tokens: 4096
+  #         quantization: awq
+  #         tensor_parallel_size: 2
+  #         gpu_memory_utilization: 0.95
+  #   worker:
+  #     num_replicas: 1
+  #     resources:
+  #       cpu: 2
+  #       gpu: 2
+
+data_writer:
+  type: ParquetDataWriter
+  params:
+    output_path: "./llm_synthesis_output"
+    table_name: "synthesized_data"
+
+executor:
+  max_samples: 10000
+  batch_size: 64    # for online mode, this is the HTTP concurrency batch
+                    # for offline mode, vLLM handles internal batching
+
+# ---------- File Formats ----------
+#
+# accounts_file (JSONL, one account per line):
+#   {"api_key": "sk-ant-key1"}
+#   {"api_key": "sk-ant-key2", "base_url": "https://custom-endpoint.com"}
+#   {"api_key": "sk-key3", "org_id": "org-xxx"}
+#
+# proxies_file (text, one URL per line):
+#   http://user:pass@proxy1.example.com:8080
+#   socks5://user:pass@proxy2.example.com:1080
+#   http://proxy3.example.com:3128
