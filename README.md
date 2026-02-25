@@ -735,6 +735,10 @@ OperatorRegistry.register("MyImageRefiner", MyImageRefiner)
 
 MIT License
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=duoan/mega-data-factory&type=date&legend=top-left)](https://www.star-history.com/#duoan/mega-data-factory&type=date&legend=top-left)
+
 ## Citation
 
 ```bibtex
