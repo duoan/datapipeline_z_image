@@ -177,6 +177,29 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 | [`VideoExactByteLevelDeduplicator`](mega_data_factory/operators/dedup/video_exact_byte_level_dedup.md) | Exact file hash deduplication (SHA-256/MD5/SHA-512) | - |
 | [`VideoExactStreamLevelDeduplicator`](mega_data_factory/operators/dedup/video_exact_stream_level_dedup.md) | Raw stream hash deduplication (container-agnostic) | FFmpeg |
 
+### LLM Synthesis Operators
+
+**Refiners** (synthesize data via LLM APIs or local models):
+
+| Operator | Description | Mode |
+|----------|-------------|------|
+| [`LLMOnlineSynthesisRefiner`](mega_data_factory/operators/refiners/llm_synthesis/llm_online_synthesis.md) | Call remote LLM APIs (OpenAI, Claude, Gemini, DeepSeek, etc.) with account pool + proxy pool | Online |
+| [`LLMOfflineSynthesisRefiner`](mega_data_factory/operators/refiners/llm_synthesis/llm_offline_synthesis.md) | Run models locally on GPUs via vLLM engine for high-throughput batch inference | Offline |
+| [`LLMResponseParserRefiner`](mega_data_factory/operators/refiners/llm_synthesis/llm_response_parser.md) | Post-process LLM responses: JSON/regex/JMESPath extraction, schema validation, field mapping | Post-processing |
+
+![LLM Synthesis Architecture](mega_data_factory/operators/refiners/llm_synthesis/architecture.png)
+
+**Online mode** supports any OpenAI-compatible endpoint (vLLM server, Ollama, Together, Groq) plus native Anthropic and Gemini APIs. Account pool rotates API keys with rate-limit awareness; proxy pool rotates HTTP/SOCKS proxies with failure tracking.
+
+**Offline mode** uses vLLM's Python API for zero-HTTP-overhead GPU inference with continuous batching, tensor parallelism, and quantization (AWQ/GPTQ) support.
+
+Install dependencies:
+
+```bash
+pip install -e ".[llm-online]"    # httpx for online mode
+pip install -e ".[llm-offline]"   # vllm for offline mode
+```
+
 ### Data Writers
 
 | Writer | Description |
@@ -485,6 +508,68 @@ executor:
     generate_report: true
 ```
 
+### LLM Synthesis Pipeline
+
+```yaml
+# configs/example_llm_synthesis.yaml
+# Knowledge synthesis with post-processing
+
+data_loader:
+  type: HuggingFaceLoader
+  params:
+    dataset_name: "your-org/seed-prompts"
+    split: "train"
+    streaming: true
+
+stages:
+  - name: synthesis_stage
+    operators:
+      # Step 1: Call LLM API
+      - name: llm_online_synthesis_refiner
+        params:
+          provider: anthropic
+          model: claude-sonnet-4-20250514
+          system_prompt: |
+            Analyze the text and return JSON:
+            {"category": "...", "confidence": 0.0-1.0, "reasoning": "..."}
+          prompt_template: "Classify: {text}"
+          enable_thinking: true
+          thinking_budget: 10000
+          accounts:
+            - api_key: "${ANTHROPIC_API_KEY_1}"
+            - api_key: "${ANTHROPIC_API_KEY_2}"
+          proxies:
+            - "http://user:pass@proxy1:8080"
+          max_concurrent: 8
+
+      # Step 2: Extract structured output
+      - name: llm_response_parser_refiner
+        params:
+          input_field: llm_response
+          parse_mode: json
+          field_mapping:
+            category: "category"
+            confidence: "confidence"
+            reasoning: "reasoning"
+          required_fields: ["category", "confidence"]
+          field_types:
+            category: str
+            confidence: float
+    worker:
+      num_replicas: 1
+      resources:
+        cpu: 2
+
+data_writer:
+  type: ParquetDataWriter
+  params:
+    output_path: "./output/llm_synthesis"
+
+executor:
+  max_samples: 10000
+  batch_size: 64
+```
+
 ## Performance
 
 ### Text Pipeline (CommonCrawl)
@@ -561,6 +646,7 @@ mega-data-factory/
 │   │   └── commoncrawl_loader.py       # CommonCrawl WARC files
 │   ├── operators/
 │   │   ├── refiners/                   # Refiners (text, image, video)
+│   │   │   └── llm_synthesis/          # LLM synthesis (online, offline, parser)
 │   │   ├── filters/                    # Text + Image filters
 │   │   └── dedup/                      # Deduplicators (phash, minhash)
 │   ├── writers/
@@ -570,7 +656,8 @@ mega-data-factory/
 ├── src/lib.rs                          # 🦀 Rust operators (quality, phash, HTML extraction)
 ├── configs/                            # Pipeline configurations
 │   ├── z_image.yaml                    # Image pipeline
-│   └── example_commoncrawl.yaml        # Text pipeline
+│   ├── example_commoncrawl.yaml        # Text pipeline
+│   └── example_llm_synthesis.yaml      # LLM synthesis pipeline
 ├── tests/                              # Unit tests
 ├── Cargo.toml                          # Rust dependencies
 └── pyproject.toml                      # Python config (maturin build)
@@ -620,6 +707,7 @@ OperatorRegistry.register("MyImageRefiner", MyImageRefiner)
 - **Rust Acceleration**: 10-25x speedup for image quality, hashing, and HTML extraction
 - **GPU Optimization**: CLIP/SigLIP embedding extraction with FP16 and batch inference
 - **Elastic Scaling**: Dynamic worker allocation with min/max replicas per stage
+- **LLM Synthesis**: Online (API) and offline (vLLM) modes with account/proxy pools and response parsing
 - **Config-Driven**: YAML configs define entire pipelines with no code changes
 
 ## References
