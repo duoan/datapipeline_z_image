@@ -14,6 +14,7 @@ import faiss  # type: ignore
 import numpy as np
 import ray
 import ray.exceptions
+import xxhash
 
 
 @ray.remote
@@ -337,7 +338,7 @@ class ExactDedupBackend(DedupBackend):
                         See class docstring for performance guidelines.
             name_prefix: Prefix for Ray Actor names (for Ray Dashboard visibility)
             bucket_id_getter: Optional function(key: str) -> int to compute bucket_id.
-                             If None, uses hash(key) % num_buckets.
+                             If None, uses xxhash.xxh64(key).intdigest() % num_buckets.
             track_representative: If True, track the representative sample ID for each key.
                                  This enables returning the representative ID when duplicates are found.
         """
@@ -369,7 +370,7 @@ class ExactDedupBackend(DedupBackend):
         """Get bucket ID for a given key."""
         if self.bucket_id_getter:
             return self.bucket_id_getter(key) % self.num_buckets
-        return hash(key) % self.num_buckets
+        return xxhash.xxh64(key).intdigest() % self.num_buckets
 
     def _get_actor(self, key: str):
         """Get the bucket actor for a given key."""
@@ -486,7 +487,7 @@ class SemanticDedupBackend(DedupBackend):
             track_representative: If True, track representative sample IDs
             use_faiss: If True, use FAISS for vector search (requires faiss-cpu/faiss-gpu)
             bucket_id_getter: Optional function(key: str) -> int to compute bucket_id.
-                             If None, uses hash(key) % num_buckets.
+                             If None, uses xxhash.xxh64(key).intdigest() % num_buckets.
         """
         self._track_representative = track_representative
         self.num_buckets = num_buckets
@@ -522,7 +523,7 @@ class SemanticDedupBackend(DedupBackend):
         """Get bucket ID for a given key."""
         if self.bucket_id_getter:
             return self.bucket_id_getter(key) % self.num_buckets
-        return hash(key) % self.num_buckets
+        return xxhash.xxh64(key).intdigest() % self.num_buckets
 
     def batch_mark_seen(self, keys: list[str]) -> list[bool]:
         """Batch check keys (for compatibility with DedupBackend interface).
