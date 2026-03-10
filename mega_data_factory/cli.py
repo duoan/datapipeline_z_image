@@ -24,7 +24,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-
+print("first log")
 # Suppress noisy logs from third-party libraries
 for logger_name in [
     "httpx",
