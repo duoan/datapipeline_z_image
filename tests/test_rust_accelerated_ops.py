@@ -8,9 +8,9 @@ from PIL import Image
 
 # Import the installed modules
 try:
-    from mega_data_factory import rust_accelerated_ops as ops  # type: ignore
+    from mega_data_factory import rust_operators as ops  # type: ignore
 except ImportError:
-    print("Error: rust_accelerated_ops not installed.")
+    print("Error: rust_operators not installed.")
     print("Run: uv pip install -e .")
     exit(1)
 
