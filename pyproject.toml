@@ -62,6 +62,8 @@ dependencies = [
     "yt-dlp>=2026.2.4",
     "fasttext>=0.9.3",
     "numpy<2.0",  # fasttext requires numpy<2.0
+    "resiliparse>=0.14.0",  # Fast HTML parsing, text extraction, language detection
+    "fastwarc>=0.14.0",  # Fast WARC parsing (C++/Cython, 1.3x-6.5x faster than warcio)
 ]
 
 [project.optional-dependencies]

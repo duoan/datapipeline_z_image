@@ -28,12 +28,37 @@ class CommonCrawlLoader(DataLoader):
         base_url: str = "https://data.commoncrawl.org/",
         cache_dir: str | None = None,
         num_files: int | None = None,
+        min_html_length: int = 100,
+        *,
+        use_rust_extractor: bool = True,  # Keep rust extraction by default for backward compatibility
+        main_content: bool = True,
+        preserve_formatting: bool | str = True,
+        min_text_length: int = 50,
     ):
         self.crawl_id = crawl_id
         self.base_url = base_url.rstrip("/") + "/"
         self.cache_dir = cache_dir or os.path.expanduser("~/.cache/commoncrawl")
         self.num_files = num_files
+        self.min_html_length = min_html_length
+        self.use_rust_extractor = use_rust_extractor
+        self.main_content = main_content
+        self.preserve_formatting = preserve_formatting
+        self.min_text_length = min_text_length
         self._file_list: list[str] | None = None
+
+        # Lazy load extractors
+        self._rust_html_extract_text = None
+        if not use_rust_extractor:
+            from mega_data_factory.utils.resiliparse_utils import extract_text_from_html
+
+            self._extract_text_from_html = extract_text_from_html
+
+    def _get_rust_extractor(self):
+        if self._rust_html_extract_text is None:
+            from mega_data_factory.rust_operators import html_extract_text
+
+            self._rust_html_extract_text = html_extract_text
+        return self._rust_html_extract_text
 
     def get_file_list(self, max_samples: int | None = None, num_workers: int = 1) -> list[str]:
         """Get list of WARC file paths."""
@@ -75,8 +100,6 @@ class CommonCrawlLoader(DataLoader):
         records as they're parsed. Rust is used only for HTML text extraction.
         This enables downstream stages to start processing immediately.
         """
-        from mega_data_factory.rust_operators import html_extract_text
-
         label = f"W{worker_id}" if worker_id is not None else "L"
         skip = checkpoint.get("records_processed", 0) if checkpoint else 0
         count = 0
@@ -114,23 +137,36 @@ class CommonCrawlLoader(DataLoader):
                     except Exception:
                         continue
 
-                    if not html_content or len(html_content) < 100:
+                    if not html_content or len(html_content) < self.min_html_length:
                         continue
 
                     count += 1
                     if count <= skip:
                         continue
 
-                    # 🦀 Rust: Extract text from HTML (fast!)
+                    # Extract text
                     try:
-                        result = html_extract_text(html_content)
+                        if self.use_rust_extractor:
+                            html_extract_text = self._get_rust_extractor()
+                            result = html_extract_text(html_content)
+                            if result is None:
+                                continue
+                            title, text, text_length = result
+                        else:
+                            result = self._extract_text_from_html(
+                                html_content,
+                                main_content=self.main_content,
+                                preserve_formatting=self.preserve_formatting,
+                            )
+                            title = result.title
+                            text = result.text
+                            text_length = result.text_length
                     except Exception as e:
                         print(f"Error {e}")
-
-                    if result is None:
                         continue
 
-                    title, text, text_length = result
+                    if not text or text_length < self.min_text_length:
+                        continue
                     yielded += 1
 
                     if yielded == 1:
