@@ -2,10 +2,12 @@
 
 from mega_data_factory.framework import OperatorRegistry
 
+from .html_text_extraction_refiner import HtmlTextExtractionRefiner
 from .text_new_line_removal_refiner import TextNewLineRemovalRefiner
 
 # Register text-only refiners (no heavy dependencies)
 OperatorRegistry.register("TextNewLineRemovalRefiner", TextNewLineRemovalRefiner)
+OperatorRegistry.register("HtmlTextExtractionRefiner", HtmlTextExtractionRefiner)
 
 
 def _register_image_refiners():
@@ -69,4 +71,4 @@ except ImportError:
     pass
 
 
-__all__ = ["TextNewLineRemovalRefiner"]
+__all__ = ["TextNewLineRemovalRefiner", "HtmlTextExtractionRefiner"]

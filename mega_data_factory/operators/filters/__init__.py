@@ -3,6 +3,7 @@
 from mega_data_factory.framework import OperatorRegistry
 
 from .range_filter import RangeFilter
+from .resiliparse_language_filter import ResiliparseLanguageFilter
 from .text_alphabetic_word_ration_filter import TextAlphabeticWordRationFilter
 from .text_avg_word_length_filter import TextAvgWordLengthFilter
 from .text_bullet_filter import TextBulletFilter
@@ -24,6 +25,7 @@ OperatorRegistry.register("TextEllipsisLineRatioFilter", TextEllipsisLineRatioFi
 OperatorRegistry.register("TextRepetitionFilter", TextRepetitionFilter)
 OperatorRegistry.register("TextSymbolRatioFilter", TextSymbolRatioFilter)
 OperatorRegistry.register("TextTargetLanguageFilter", TextTargetLanguageFilter)
+OperatorRegistry.register("ResiliparseLanguageFilter", ResiliparseLanguageFilter)
 
 
 def _register_image_filters():
@@ -51,4 +53,5 @@ __all__ = [
     "TextRepetitionFilter",
     "TextSymbolRatioFilter",
     "TextTargetLanguageFilter",
+    "ResiliparseLanguageFilter",
 ]
