@@ -189,13 +189,13 @@ mdf run -c configs/z_image.yaml --max-samples 1000 --batch-size 500
 
 | Operator | Description | Mode |
 |----------|-------------|------|
-| [`LLMOnlineSynthesisRefiner`](mega_data_factory/operators/refiners/llm_synthesis/llm_online_synthesis.md) | Call remote LLM APIs (OpenAI, Claude, Gemini, DeepSeek, etc.) with account pool + proxy pool | Online |
+| [`LLMOnlineSynthesisRefiner`](mega_data_factory/operators/refiners/llm_synthesis/llm_online_synthesis.md) | Call remote LLM APIs (OpenAI, Claude, Gemini, MiniMax, DeepSeek, etc.) with account pool + proxy pool | Online |
 | [`LLMOfflineSynthesisRefiner`](mega_data_factory/operators/refiners/llm_synthesis/llm_offline_synthesis.md) | Run models locally on GPUs via vLLM engine for high-throughput batch inference | Offline |
 | [`LLMResponseParserRefiner`](mega_data_factory/operators/refiners/llm_synthesis/llm_response_parser.md) | Post-process LLM responses: JSON/regex/JMESPath extraction, schema validation, field mapping | Post-processing |
 
 ![LLM Synthesis Architecture](mega_data_factory/operators/refiners/llm_synthesis/architecture.png)
 
-**Online mode** supports any OpenAI-compatible endpoint (vLLM server, Ollama, Together, Groq) plus native Anthropic and Gemini APIs. Account pool rotates API keys with rate-limit awareness; proxy pool rotates HTTP/SOCKS proxies with failure tracking.
+**Online mode** supports any OpenAI-compatible endpoint (vLLM server, Ollama, Together, Groq) plus native Anthropic, Gemini, and [MiniMax](https://www.minimax.io) APIs. Account pool rotates API keys with rate-limit awareness; proxy pool rotates HTTP/SOCKS proxies with failure tracking.
 
 **Offline mode** uses vLLM's Python API for zero-HTTP-overhead GPU inference with continuous batching, tensor parallelism, and quantization (AWQ/GPTQ) support.
 
