@@ -1,6 +1,6 @@
 # LLMOnlineSynthesisRefiner
 
-Calls remote LLM APIs (OpenAI, Claude, Gemini, DeepSeek, and any OpenAI-compatible endpoint) to synthesize responses from seed prompts. Features account pool rotation and proxy pool for anti-throttling.
+Calls remote LLM APIs (OpenAI, Claude, Gemini, MiniMax, DeepSeek, and any OpenAI-compatible endpoint) to synthesize responses from seed prompts. Features account pool rotation and proxy pool for anti-throttling.
 
 For local GPU inference without HTTP overhead, see [LLMOfflineSynthesisRefiner](llm_offline_synthesis.md).
 
@@ -14,7 +14,7 @@ pip install -e ".[llm-online]"   # installs httpx[socks]
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `provider` | str | `"openai"` | LLM provider: `"openai"`, `"anthropic"`, `"gemini"` |
+| `provider` | str | `"openai"` | LLM provider: `"openai"`, `"anthropic"`, `"gemini"`, `"minimax"` |
 | `model` | str | `"gpt-4o"` | Model identifier |
 | `system_prompt` | str | `None` | System prompt prepended to every request |
 | `prompt_field` | str | `"prompt"` | Record field containing the text prompt |
@@ -57,6 +57,7 @@ pip install -e ".[llm-online]"   # installs httpx[socks]
 | OpenAI | `"openai"` | o-series `reasoning_content` | — |
 | Anthropic Claude | `"anthropic"` | Extended thinking | Base64 video |
 | Google Gemini | `"gemini"` | Gemini 2.5 thinking | Inline video |
+| MiniMax | `"minimax"` | think-tag strip | — |
 | DeepSeek | `"openai"` + `base_url` | R1 `reasoning_content` | — |
 | Together / Groq / vLLM server | `"openai"` + `base_url` | — | — |
 
@@ -114,7 +115,24 @@ operators:
           base_url: "https://api.deepseek.com/v1"
 ```
 
-### Prompt template with multiple record fields
+### MiniMax M2.7
+
+```yaml
+operators:
+  - name: llm_online_synthesis_refiner
+    params:
+      provider: minimax
+      model: MiniMax-M2.7
+      system_prompt: "You are a helpful assistant."
+      prompt_field: prompt
+      max_tokens: 4096
+      temperature: 0.7
+      accounts:
+        - api_key: "${MINIMAX_API_KEY}"
+      max_concurrent: 8
+```
+
+
 
 ```yaml
 operators:

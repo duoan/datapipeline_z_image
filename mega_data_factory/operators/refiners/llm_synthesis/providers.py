@@ -1,5 +1,5 @@
 """
-LLM Provider implementations for OpenAI, Anthropic (Claude), and Google Gemini.
+LLM Provider implementations for OpenAI, Anthropic (Claude), Google Gemini, and MiniMax.
 
 Each provider handles API-specific request formatting, multimodal content encoding,
 response parsing, and rate-limit detection. All providers use raw HTTP via httpx
@@ -430,8 +430,41 @@ class GeminiProvider(LLMProvider):
         return response.status_code == 429
 
 
+class MiniMaxProvider(OpenAIProvider):
+    """Provider for MiniMax API (M2.7, M2.7-highspeed, M2.5, M2.5-highspeed).
+
+    Uses MiniMax's OpenAI-compatible endpoint at api.minimax.io/v1.
+    Temperature is clamped to (0.0, 1.0] per MiniMax API constraints.
+    Thinking tags emitted by reasoning models are stripped from the response.
+    """
+
+    DEFAULT_BASE_URL = "https://api.minimax.io/v1"
+    # MiniMax requires temperature in (0.0, 1.0] — clamp silently to avoid errors.
+    _TEMP_MIN = 1e-6
+    _TEMP_MAX = 1.0
+
+    def build_request(self, *, temperature, **kwargs):
+        clamped = max(self._TEMP_MIN, min(self._TEMP_MAX, temperature))
+        return super().build_request(temperature=clamped, **kwargs)
+
+    def parse_response(self, response):
+        import re
+
+        result = super().parse_response(response)
+        # Strip <think>...</think> blocks emitted by reasoning-capable models.
+        if result.content and "<think>" in result.content:
+            think_match = re.search(r"<think>(.*?)</think>", result.content, re.DOTALL)
+            if think_match:
+                result.thinking = (result.thinking or "") + think_match.group(1)
+                result.content = re.sub(
+                    r"<think>.*?</think>", "", result.content, flags=re.DOTALL
+                ).strip()
+        return result
+
+
 PROVIDERS: dict[str, type[LLMProvider]] = {
     "openai": OpenAIProvider,
     "anthropic": AnthropicProvider,
     "gemini": GeminiProvider,
+    "minimax": MiniMaxProvider,
 }
