@@ -44,7 +44,7 @@ def _make_response(body: dict, status_code: int = 200):
     return mock
 
 
-def _openai_body(content: str, model: str = "MiniMax-M2.7", usage: dict | None = None):
+def _openai_body(content: str, model: str = "MiniMax-M3", usage: dict | None = None):
     return {
         "choices": [{"message": {"content": content}, "finish_reason": "stop"}],
         "model": model,
@@ -213,7 +213,7 @@ class TestMiniMaxRequestBuilding:
         )
         assert body["messages"][0] == {"role": "system", "content": "You are helpful."}
 
-    def test_m25_highspeed_model(self):
+    def test_m3_model(self):
         p = MiniMaxProvider()
         account = _make_account()
         _, _, body = p.build_request(
@@ -223,13 +223,13 @@ class TestMiniMaxRequestBuilding:
             image_media_type="",
             video_data=None,
             video_media_type="",
-            model="MiniMax-M2.5-highspeed",
+            model="MiniMax-M3",
             max_tokens=100,
             temperature=0.5,
             extra_params={},
             account=account,
         )
-        assert body["model"] == "MiniMax-M2.5-highspeed"
+        assert body["model"] == "MiniMax-M3"
 
 
 # ---------------------------------------------------------------------------

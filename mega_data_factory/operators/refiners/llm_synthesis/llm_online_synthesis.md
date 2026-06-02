@@ -115,14 +115,14 @@ operators:
           base_url: "https://api.deepseek.com/v1"
 ```
 
-### MiniMax M2.7
+### MiniMax M3
 
 ```yaml
 operators:
   - name: llm_online_synthesis_refiner
     params:
       provider: minimax
-      model: MiniMax-M2.7
+      model: MiniMax-M3
       system_prompt: "You are a helpful assistant."
       prompt_field: prompt
       max_tokens: 4096
