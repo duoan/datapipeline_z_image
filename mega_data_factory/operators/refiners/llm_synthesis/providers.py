@@ -431,7 +431,10 @@ class GeminiProvider(LLMProvider):
 
 
 class MiniMaxProvider(OpenAIProvider):
-    """Provider for MiniMax API (M2.7, M2.7-highspeed, M2.5, M2.5-highspeed).
+    """Provider for MiniMax API (M3, M2.7, M2.7-highspeed).
+
+    M3 is the current flagship (512K context, 128K max output, image input
+    support). M2.7 family is retained for backward compatibility.
 
     Uses MiniMax's OpenAI-compatible endpoint at api.minimax.io/v1.
     Temperature is clamped to (0.0, 1.0] per MiniMax API constraints.
